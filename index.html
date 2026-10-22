@@ -346,6 +346,7 @@ function newGame(meId){
     const c=S.clans[id];const own=PLOTS.filter(p=>p.clan===id);
     c.plots=[mkPlot(own[0]),mkPlot(own[1])];
     c.deck=commons.slice(i*2,i*2+2).concat(shuffle(commons.slice(6))).map(mkPlot);
+    if(id===meId){S.draft=[...c.plots,c.deck.shift()];c.plots=[]}
   });
   const edge=Object.keys(map).filter(k=>k!=="ely"&&!ids.some(i=>S.clans[i].haven===k));
   const e2=shuffle(edge);S.agents=e2.slice(0,CONFIG.agents);
@@ -594,13 +595,13 @@ function checkPlot(c,p){
   const vp=p.big?CONFIG.bigVP:CONFIG.smallVP;
   c.done.push({title:p.title,vp});
   c.plots=c.plots.filter(x=>x!==p);
-  log(`${clanSpan(c.id)} завершает замысел «${p.title}»: +${vp} ПО.`,!c.bot);
+  log(`${clanSpan(c.id)} достигает цели «${p.title}»: +${vp} ПО.`,!c.bot);
   if(c.plots.length<2&&c.deck.length){
     if(c.bot)c.plots.push(c.deck.shift());
     else{S.draft=c.deck.splice(0,3);}
   }
 }
-function takeDraft(i){const c=me();const p=S.draft[i];c.plots.push(p);c.deck.push(...S.draft.filter(x=>x!==p));S.draft=null;log(`Вы берёте новый замысел: «${p.title}».`,true);render()}
+function takeDraft(i){const c=me();const p=S.draft[i];c.plots.push(p);c.deck.push(...S.draft.filter(x=>x!==p));S.draft=null;log(`Вы берёте новую цель: «${p.title}».`,true);render()}
 function addBoon(debtor,creditor){S.boons.push({uid:UID++,debtor,creditor,night:S.night})}
 function removeBoon(debtor,creditor){const i=S.boons.findIndex(b=>b.debtor===debtor&&b.creditor===creditor);if(i>=0)S.boons.splice(i,1)}
 
@@ -833,14 +834,14 @@ function actionsFor(d){
   const out=[];const add=(label,a,note,grp)=>out.push({label,a,note,grp});
   if(dd>=1&&dd<=2)add("Перейти",{type:"move",d},"только перемещение, до 2 районов","Движение");
   if(dd<=CONFIG.contactRange){
-    for(const {p,i,x} of openConds(c))if(x.d===d&&ct)for(const w of contactWays(c,ct,permit=>({type:"use",d,plot:p.uid,cond:i,permit,remote:true})))add(`Замысел: ${x.t}`,w.a,w.note,"Замысел");
+    for(const {p,i,x} of openConds(c))if(x.d===d&&ct)for(const w of contactWays(c,ct,permit=>({type:"use",d,plot:p.uid,cond:i,permit,remote:true})))add(`Цель: ${x.t}`,w.a,w.note,"Личная цель");
     S.case.parts.forEach((p,i)=>{if(!S.caseDone[i]&&p.d===d&&ct)for(const w of contactWays(c,ct,permit=>({type:"caseContact",d,part:i,permit,remote:true})))add(`Дело: ${p.t}`,w.a,w.note,"Городское дело")});
   }
   if(dd<=1){
     for(const {p,i,x} of openConds(c))if(x.d===d){
       const disc=x.disc||bestDisc(c);
       const n=CONFIG.pool+resBonus(c,disc)+(CLANS[c.id].ab==="rage"?1:0)+(c.humanity<=2?1:0)+c.clue;
-      add(`Грубая сила: ${x.t}`,c.hunger>=CONFIG.hungerMax?null:{type:"brute",d,plot:p.uid,cond:i},c.hunger>=CONFIG.hungerMax?"недоступно при Голоде 4":`${disc}: ${n} кубиков + 1 красный. Всегда след и накал +1${CLANS[c.id].ab==="rage"?"":", Человечность −1"}`,"Замысел");
+      add(`Грубая сила: ${x.t}`,c.hunger>=CONFIG.hungerMax?null:{type:"brute",d,plot:p.uid,cond:i},c.hunger>=CONFIG.hungerMax?"недоступно при Голоде 4":`${disc}: ${n} кубиков + 1 красный. Всегда след и накал +1${CLANS[c.id].ab==="rage"?"":", Человечность −1"}`,"Личная цель");
     }
     S.case.parts.forEach((p,i)=>{if(!S.caseDone[i]&&p.alt.d===d){
       if(p.alt.k==="check")add(`Дело: ${p.t}`,{type:"caseCheck",d,part:i},`проверка ${CONFIG.pool+c.clue} кубиков, нужен 1 успех`,"Городское дело");
@@ -900,15 +901,18 @@ const INTRO=[
    <ul><li><b>Дисциплины:</b> ${cl.disc.join(", ")}. Ими действуют, когда идут напролом.</li>
    <li><b>Особенность клана:</b> ${cl.ability}</li>
    <li><b>Тип хищника — ${cl.predator}:</b> ${cl.predText}. Там охота не поднимает накал.</li>
-   <li><b>Ваш первый контакт:</b> ${ct.name}, ${ct.role} («${D(ct.d).name}», тип ${ct.type}). Свой контакт выполняет условия замыслов без бросков.</li></ul>
+   <li><b>Ваш первый контакт:</b> ${ct.name}, ${ct.role} («${D(ct.d).name}», тип ${ct.type}). Свой контакт выполняет условия личных целей без бросков.</li></ul>
    <p class="hint">Шкалы: Голод (0–4) — чем выше, тем больше красных кубиков и риска; Человечность (1–5) — падает от грубых методов; Статус (0–5) — положение при дворе, идёт в очки.</p>`}},
- ()=>{const c=me(),p=c.plots[0];return {title:"Ваш замысел",hl:p.conds.map(x=>x.d),html:`
-   <p><b>«${p.title}»</b> — ${p.text} Награда: <b>${p.big?CONFIG.bigVP:CONFIG.smallVP} ПО</b>.</p>
-   <p>Нужно выполнить ${p.conds.length} условия в любом порядке. Каждое привязано к району (подсвечены):</p>
-   <ul>${p.conds.map(x=>{const ct=contactAt(x.d);return `<li><b>${x.t}</b> — «${D(x.d).name}». Путь 1: контакт этого района, ${ct.name} (${ct.owner===S.me?"он ваш — просто задействуйте":ct.owner?"он у клана "+NM(ct.owner)+", можно попросить за долг":"он ничей — сначала наладьте с ним связь"}). Путь 2: грубая сила (${x.disc||bestDisc(c)}) — быстро, но оставляет след, накал и стоит Человечности.</li>`}).join("")}</ul>
-   <p class="hint">Запасной замысел — «${c.plots[1]?c.plots[1].title:"—"}». Он станет активным, когда вы закончите этот. Очки: замыслы + Статус + долги, которые должны вам, − ваши долги.</p>`}},
+ ()=>{const c=me();
+   if(!S.draft){const p=c.plots[0];return {title:"Ваша личная цель",hl:p?p.conds.map(x=>x.d):[],html:p?`<p>Вы выбрали <b>«${p.title}»</b>. Её районы подсвечены на карте. Когда добьётесь её, выберете следующую из трёх.</p>`:""}}
+   return {title:"Выберите личную цель",hl:[...new Set(S.draft.flatMap(p=>p.conds.map(x=>x.d)))],noNext:true,html:`
+   <p>Это то, чего ваш клан хочет добиться в городе. За выполненную цель — очки (ПО). Каждая цель — 2–3 условия в любом порядке, у каждого условия свой район.</p>
+   <p class="hint">Условие выполняется двумя путями: через <b>контакт</b> этого района (свой — без броска, чужой — за долг владельцу, ничейный — сначала наладить связь) или <b>грубой силой</b> там же — быстро, но со следом, накалом и потерей Человечности.</p>
+   ${S.draft.map((p,i)=>`<div class="plot"><div class="row" style="justify-content:space-between"><b>${p.title}</b><span class="tag">${p.big?CONFIG.bigVP+" ПО · крупная":CONFIG.smallVP+" ПО · малая"}</span></div><span class="hint">${p.text}</span>
+     ${p.conds.map(x=>{const ct=contactAt(x.d);return `<div class="cond"><span><b>${x.t}</b> — ${D(x.d).name}</span><span class="ways">контакт: ${ct.name} (${ct.owner===S.me?"ваш":ct.owner?NM(ct.owner):"ничей"}) · или грубая сила: ${x.disc||bestDisc(c)}</span></div>`}).join("")}
+     <button class="primary" onclick="takeDraft(${i});introNav(1)">Выбрать эту цель</button></div>`).join("")}`}},
  ()=>{const others=S.ids.filter(i=>i!==S.me);return {title:"Соперники и Князь",hl:others.map(i=>S.clans[i].pos),html:`
-   <p>Против вас играют ${others.map(clanSpan).join(" и ")}. Их замыслы скрыты, но видно, куда они ходят и что просят.</p>
+   <p>Против вас играют ${others.map(clanSpan).join(" и ")}. Их цели скрыты, но видно, куда они ходят и что просят.</p>
    <ul><li><b>Боны (долги).</b> Чужим контактом можно воспользоваться с согласия владельца — тогда вы должны ему услугу. Соперники будут предлагать то же самое вам. Долги в конце дают ±1 очко.</li>
    <li><b>Следы.</b> Грубые действия оставляют скрытые следы (?N на карте). Кто расследует район, превращает чужой след в доказательство — и может шантажировать, разоблачить или обвинить на сборе.</li>
    <li><b>Князь</b> ходит сам: каждую ночь объявляет указ, может вручить значок Шерифа и созвать Общий сбор, где выносят приговоры.</li></ul>`}},
@@ -921,11 +925,11 @@ const INTRO=[
    <p class="hint">Всего 6 ночей. Перед каждой ночью покажу, что случилось и что изменилось.</p>`}),
 ];
 function introNav(d){S.intro=clamp(S.intro+d,0,INTRO.length);if(S.intro>=INTRO.length)S.phase="brief";render()}
-function skipIntro(){S.intro=INTRO.length;S.phase="brief";render()}
+function skipIntro(){if(S.draft&&!me().plots.length)takeDraft(0);S.intro=INTRO.length;S.phase="brief";render()}
 function introCard(){
   const st=INTRO[S.intro]();
   return `<div class="card stage"><span class="step">Вступление · ${S.intro+1} из ${INTRO.length}</span><h2>${st.title}</h2>${st.html}
-    <div class="row">${S.intro>0?`<button onclick="introNav(-1)">Назад</button>`:""}<button class="primary" onclick="introNav(1)">${S.intro===INTRO.length-1?"К первой ночи":"Дальше"}</button><button onclick="skipIntro()">Пропустить</button></div></div>`;
+    <div class="row">${S.intro>0?`<button onclick="introNav(-1)">Назад</button>`:""}${st.noNext?"":`<button class="primary" onclick="introNav(1)">${S.intro===INTRO.length-1?"К первой ночи":"Дальше"}</button>`}<button onclick="skipIntro()">Пропустить</button></div></div>`;
 }
 function briefCard(){
   const c=me();const cs=S.case;
@@ -936,7 +940,7 @@ function briefCard(){
     <h3>Городское дело: ${cs.title}</h3><p>${cs.text} Нужно два вклада — их может сделать кто угодно, в том числе вы:</p>
     <ul>${cs.parts.map(p=>`<li><b>${p.t}</b>: контакт «${contactAt(p.d).name}» (${D(p.d).name}) или ${({check:"проверка",cover:"«Замести следы»",invest:"«Расследовать»"})[p.alt.k]} в «${D(p.alt.d).name}».</li>`).join("")}</ul>
     <p class="hint">Закроете — досье −1 и +1 Статус тому, кто сделает последний вклад. Не закроет никто — досье +1.</p>
-    <h3>Вы</h3><p>Голод ${c.hunger}/${CONFIG.hungerMax}${c.hunger>=3?" — высокий: начните ночь с охоты":""}. Статус ${c.status}. Активный замысел — «${c.plots[0]?c.plots[0].title:"—"}» (${c.plots[0]?c.plots[0].conds.filter(x=>x.ok).length+" из "+c.plots[0].conds.length+" условий":""}).</p>
+    <h3>Вы</h3><p>Голод ${c.hunger}/${CONFIG.hungerMax}${c.hunger>=3?" — высокий: начните ночь с охоты":""}. Статус ${c.status}. Личная цель — «${c.plots[0]?c.plots[0].title:"—"}» (${c.plots[0]?c.plots[0].conds.filter(x=>x.ok).length+" из "+c.plots[0].conds.length+" условий":""}).</p>
     <div class="row"><button class="primary" onclick="beginWave()">Начать ночь</button></div></div>`;
 }
 function summaryCard(){
@@ -960,8 +964,8 @@ function advice(){
     const d=safe[0]||any[0];if(d)return {t:`Голод ${c.hunger}: красные кубики начнут портить проверки. Поохотьтесь в «${D(d).name}»${safe[0]?" — там тихо для вашего хищника":""}.`,d};}
   for(const {x} of openConds(c)){
     const ct=contactAt(x.d);
-    if(ct.owner===c.id&&ctAvail(ct)&&rC(x.d))return {t:`Условие «${x.t}» закрывается вашим контактом ${ct.name} без проверки. Нажмите «${D(x.d).name}» → «Замысел: ${x.t}».`,d:x.d};
-    if(ct.owner&&ct.owner!==c.id&&ctAvail(ct)&&rC(x.d)){const ag=botAgrees(ct.owner,ct);if(ag.ok)return {t:`Контакт ${ct.name} у клана ${NM(ct.owner)}. Они согласны помочь ${ag.why} — выберите «${D(x.d).name}» → «Замысел: ${x.t}».`,d:x.d}}
+    if(ct.owner===c.id&&ctAvail(ct)&&rC(x.d))return {t:`Условие «${x.t}» закрывается вашим контактом ${ct.name} без проверки. Нажмите «${D(x.d).name}» → «Цель: ${x.t}».`,d:x.d};
+    if(ct.owner&&ct.owner!==c.id&&ctAvail(ct)&&rC(x.d)){const ag=botAgrees(ct.owner,ct);if(ag.ok)return {t:`Контакт ${ct.name} у клана ${NM(ct.owner)}. Они согласны помочь ${ag.why} — выберите «${D(x.d).name}» → «Цель: ${x.t}».`,d:x.d}}
     if(!ct.owner&&r1.includes(x.d))return {t:`${ct.name} в «${D(x.d).name}» ничей. Наладьте связь (проверка), и следующим действием он закроет условие «${x.t}». Или идите напролом грубой силой — быстрее, но со следом.`,d:x.d};
     if(!r1.includes(x.d)&&!rC(x.d))return {t:`Условие «${x.t}» — в «${D(x.d).name}», это далеко. Сделайте «Перейти» в его сторону.`,d:stepToward(c.pos,x.d,c.id,2)};
     if(r1.includes(x.d))return {t:`Для «${x.t}» нет свободного контакта. Можно грубой силой в «${D(x.d).name}» или сначала заняться чем-то ещё.`,d:x.d};
@@ -996,7 +1000,7 @@ function renderBoard(){
       ${ct?`<rect x="${x-36}" y="${y+18}" width="72" height="13" rx="3" fill="${ct.owner?CLANS[ct.owner].color:"#3a3e55"}" opacity="${ctAvail(ct)?1:.4}"/><text x="${x}" y="${y+28}" text-anchor="middle" fill="${ct.owner?"#14121c":"var(--ink)"}" font-size="8" font-weight="700" font-family="var(--f-body)">${ct.type}${S.night<=ct.blockUntil?" · на дне":ct.used?" · занят":""}</text>`:""}
       ${h.heat?`<text x="${x+34}" y="${y+11}" text-anchor="end" fill="#ff8a95" font-size="9" font-family="var(--f-mono)">🔥${h.heat}</text>`:""}
       ${h.traces.length?`<text x="${x-34}" y="${y+11}" fill="var(--lamp)" font-size="9" font-family="var(--f-mono)">?${h.traces.length}${h.traces.some(t=>t.clan===S.me)?"!":""}</text>`:""}
-      ${need.has(k)?`<circle cx="${x-8}" cy="${y+38}" r="3" fill="var(--lamp)"><title>нужно для замысла</title></circle>`:""}
+      ${need.has(k)?`<circle cx="${x-8}" cy="${y+38}" r="3" fill="var(--lamp)"><title>нужно для вашей цели</title></circle>`:""}
       ${caseD.has(k)?`<rect x="${x+4}" y="${y+35}" width="6" height="6" fill="#7fc4d8"><title>городское дело</title></rect>`:""}
     </g>`;
   }
@@ -1020,11 +1024,11 @@ function condHtml(x,c){
   return `<div class="cond ${x.ok?"ok":""}"><span>${x.ok?"✓ ":""}<b>${x.t}</b> — ${D(x.d).name}</span><span class="ways">контакт: ${ct.name} (${ct.type}${ct.owner?", "+(ct.owner===S.me?"ваш":NM(ct.owner)):", ничей"}) · или грубая сила: ${x.disc||bestDisc(c)}</span></div>`;
 }
 function plotHtml(p,active,c){
-  return `<div class="plot"><div class="row" style="justify-content:space-between"><b>${p.title}</b><span class="tag">${p.big?CONFIG.bigVP+" ПО · крупный":CONFIG.smallVP+" ПО"}${active?"":" · запасной"}</span></div>
+  return `<div class="plot"><div class="row" style="justify-content:space-between"><b>${p.title}</b><span class="tag">${p.big?CONFIG.bigVP+" ПО · крупная":CONFIG.smallVP+" ПО"}${active?"":" · запасная"}</span></div>
     <span class="hint">${p.text}</span>${active?p.conds.map(x=>condHtml(x,c)).join(""):`<span class="hint">Условия: ${p.conds.map(x=>x.t+" ("+D(x.d).name+")").join(", ")}. Станет активным после текущего.</span>`}
-    ${!active&&S.phase==="plan"?`<button onclick="swapPlots()">Сделать активным</button>`:""}</div>`;
+</div>`;
 }
-function swapPlots(){const c=me();c.plots.reverse();log(`Вы переключаетесь на замысел «${c.plots[0].title}».`,true);render()}
+function swapPlots(){const c=me();c.plots.reverse();log(`Вы переключаетесь на цель «${c.plots[0].title}».`,true);render()}
 function myCard(){
   const c=me();const cl=CLANS[c.id];
   const held=S.boons.filter(b=>b.creditor===c.id),owed=S.boons.filter(b=>b.debtor===c.id);
@@ -1035,7 +1039,7 @@ function myCard(){
     <div class="stats"><span>Голод ${pips(c.hunger,CONFIG.hungerMax,"●","○")}</span><span>Человечность ${pips(c.humanity,CONFIG.humanityMax,"◆","◇")}</span><span>Статус ${pips(c.status,CONFIG.statusMax,"★","☆")}</span></div>
     <div class="stats"><span>Резонанс <b>${c.res?RES[c.res].n:"—"}</b></span><span>Зацепка <b>${c.clue?"+1":"—"}</b></span><span>Убежище <b>${D(c.haven).name}</b></span></div>
     <div class="hint">${cl.disc.join(" · ")}. <b>${cl.ability}</b> Хищник — ${cl.predator}: ${cl.predText}.</div>
-    <h3>Замыслы</h3>${c.plots.map((p,i)=>plotHtml(p,i===0,c)).join("")||'<span class="hint">Замыслы закончились.</span>'}
+    <h3>Личная цель</h3>${c.plots.map((p,i)=>plotHtml(p,i===0,c)).join("")||'<span class="hint">Цели закончились.</span>'}
     ${c.done.length?`<span class="hint">Выполнено: ${c.done.map(x=>x.title+" (+"+x.vp+")").join(", ")}</span>`:""}
     <h3>Связи и долги</h3>
     <div class="hint">Ваши контакты: ${S.contacts.filter(x=>x.owner===c.id).map(x=>`<b>${x.name}</b> (${x.type}, ${D(x.d).name}) — ${x.spText}`).join("; ")||"нет"}.</div>
@@ -1046,9 +1050,9 @@ function myCard(){
 }
 function rivalsCard(){
   return `<div class="card"><h2>Соперники</h2>${S.ids.filter(i=>i!==S.me).map(id=>{const c=S.clans[id];
-    return `<div style="display:flex;flex-direction:column;gap:2px"><div class="row" style="justify-content:space-between"><span>${clanSpan(id)} <span class="hint">в «${D(c.pos).name}»</span></span><span class="stats"><span>Статус <b>${c.status}</b></span><span>Голод <b>${c.hunger}</b></span><span>Замыслов <b>${c.done.length}</b></span></span></div>
+    return `<div style="display:flex;flex-direction:column;gap:2px"><div class="row" style="justify-content:space-between"><span>${clanSpan(id)} <span class="hint">в «${D(c.pos).name}»</span></span><span class="stats"><span>Статус <b>${c.status}</b></span><span>Голод <b>${c.hunger}</b></span><span>Целей <b>${c.done.length}</b></span></span></div>
       <span class="hint">${CLANS[id].ability} Контакты: ${S.contacts.filter(x=>x.owner===id).map(x=>x.name).join(", ")||"нет"}.</span></div>`}).join("")}
-    <span class="hint">Замыслы соперников скрыты — их видно по тому, куда они ходят и что просят.</span></div>`;
+    <span class="hint">Цели соперников скрыты — их видно по тому, куда они ходят и что просят.</span></div>`;
 }
 function cityCard(){
   const pct=S.dossier/CONFIG.dossierMax*100;
@@ -1071,20 +1075,20 @@ function planCard(){
   }
   if(S.phase==="dawnready")return `<div class="card active"><h2>Рассвет</h2><p class="hint">Вампиры уходят в убежища. Решается городское дело, агенты делают шаг, следы старше двух ночей остывают.</p><button class="primary" onclick="dawn()">Встретить рассвет</button></div>`;
   if(S.phase==="end"){
-    return `<div class="card active"><h2>Итог</h2><p>${S.result}</p>${S.rank?`<div class="stats" style="flex-direction:column;gap:4px">${S.rank.map((r,i)=>`<span>${i+1}. ${clanSpan(r.id)}: <b>${r.total} ПО</b> = замыслы ${r.plots} + Статус ${r.status} + боны ${r.held}−${r.owed}${r.bigFail?" − незаконченный крупный 1":""}</span>`).join("")}</div>`:""}
+    return `<div class="card active"><h2>Итог</h2><p>${S.result}</p>${S.rank?`<div class="stats" style="flex-direction:column;gap:4px">${S.rank.map((r,i)=>`<span>${i+1}. ${clanSpan(r.id)}: <b>${r.total} ПО</b> = цели ${r.plots} + Статус ${r.status} + боны ${r.held}−${r.owed}${r.bigFail?" − незаконченная крупная цель 1":""}</span>`).join("")}</div>`:""}
       <p class="hint">Расскажите, что было скучно, что непонятно и где хотелось сделать что-то, чего игра не позволила.</p>
       <button class="primary" onclick="restart()">Сыграть ещё</button></div>`;
   }
   let html=`<div class="card active"><div class="row" style="justify-content:space-between"><h2>Ночь ${S.night} · волна ${S.wave}/${CONFIG.waves}</h2><span class="tag">вы в «${D(c.pos).name}»</span></div>`;
   if(S.draft){
-    html+=`<div class="offer"><b>Новый замысел: выберите один из ${S.draft.length}</b>${S.draft.map((p,i)=>`<button onclick="takeDraft(${i})"><b>${p.title}</b> · ${p.big?CONFIG.bigVP:CONFIG.smallVP} ПО<br><span class="hint">${p.conds.map(x=>x.t+" ("+D(x.d).name+")").join(", ")}</span></button>`).join("")}</div></div>`;
+    html+=`<div class="offer"><b>Новая личная цель: выберите одну из ${S.draft.length}</b>${S.draft.map((p,i)=>`<button onclick="takeDraft(${i})"><b>${p.title}</b> · ${p.big?CONFIG.bigVP:CONFIG.smallVP} ПО<br><span class="hint">${p.conds.map(x=>x.t+" ("+D(x.d).name+")").join(", ")}</span></button>`).join("")}</div></div>`;
     return html;
   }
   if(S.offers.length){
     html+=`<p class="hint">Пока все тайно выбирают действия, к вам обращаются:</p>`+S.offers.map(o=>`<div class="offer"><span>${o.text}</span><div class="row"><button class="primary" onclick="answerOffer(${o.uid},true)">${o.yes}</button><button onclick="answerOffer(${o.uid},false)">${o.no}</button></div></div>`).join("");
   }
   {const a=advice();html+=`<div class="advice"><b>Совет:</b> ${a.t}${a.d&&S.sel!==a.d?` <button onclick="selectDistrict('${a.d}')">Открыть «${D(a.d).name}»</button>`:""}</div>`}
-  if(!S.sel){html+=`<p class="sel-note">Выберите район на карте. Сплошная рамка — можно действовать (ваш или соседний), пунктир — «Перейти» или контакт издалека. ● — нужно для замысла, ■ — городское дело.</p>
+  if(!S.sel){html+=`<p class="sel-note">Выберите район на карте. Сплошная рамка — можно действовать (ваш или соседний), пунктир — «Перейти» или контакт издалека. ● — нужно для вашей цели, ■ — городское дело.</p>
     <div class="row"><button onclick="selectDistrict(me().pos)">Действовать здесь, в «${D(c.pos).name}»</button></div>`}
   else{
     const acts=actionsFor(S.sel);const ct=contactAt(S.sel);
@@ -1104,9 +1108,9 @@ function logCard(){
 }
 function rulesCard(){
   return `<details class="card rules"><summary><b>Правила v0.1 коротко</b></summary><ul>
-    <li><b>Цель:</b> больше всех ПО после 6 ночей. ПО = замыслы (малый ${CONFIG.smallVP}, крупный ${CONFIG.bigVP}) + Статус + боны, которые должны вам, − боны, которые должны вы; начатый и не законченный крупный −1. Досье ${CONFIG.dossierMax} — проигрывают все.</li>
+    <li><b>Цель:</b> больше всех ПО после 6 ночей. ПО = личные цели (малая ${CONFIG.smallVP}, крупная ${CONFIG.bigVP}) + Статус + боны, которые должны вам, − боны, которые должны вы; начатая и не законченная крупная цель −1. Досье ${CONFIG.dossierMax} — проигрывают все.</li>
     <li><b>Ночь:</b> 3 волны. Каждый тайно выбирает одно действие, потом все раскрываются по очереди (очередь сдвигается). Действовать можно в своём или соседнем районе — фишка туда переходит. Контакт можно задействовать с расстояния до ${CONFIG.contactRange}. «Перейти» — до 2 районов.</li>
-    <li><b>Замысел:</b> условия в любом порядке. Каждое — в конкретном районе: через контакт этого района (свой — без проверки, чужой — за бон с согласия владельца) или грубой силой: проверка дисциплиной + 1 лишний красный кубик, всегда след и накал +1, Человечность −1, при Голоде 4 недоступна.</li>
+    <li><b>Личная цель:</b> условия в любом порядке. Каждое — в конкретном районе: через контакт этого района (свой — без проверки, чужой — за бон с согласия владельца) или грубой силой: проверка дисциплиной + 1 лишний красный кубик, всегда след и накал +1, Человечность −1, при Голоде 4 недоступна.</li>
     <li><b>Проверка:</b> ${CONFIG.pool}d6, успех 5–6, красных кубиков столько, какой Голод. 2+ успеха — чисто; 1 — с осложнением (накал +1); 0 — провал, но +1 кубик к следующей. Две шестёрки, хоть одна красная — грязный успех: след и накал. 0 успехов и красная единица — звериный провал: след, накал, Человечность −1.</li>
     <li><b>Голод</b> 0–4: на закате 1–3 на d6 — +1; перед грубой силой — то же. <b>Охота</b>: −2 Голода, или −1 и резонанс (+1 кубик к двум дисциплинам до рассвета). Охота не по типу хищника — накал +1.</li>
     <li><b>Человечность</b> 1–5: при 4–5 +1 кубик к «Наладить связь», при 1–2 +1 к грубой силе.</li>
@@ -1114,12 +1118,12 @@ function rulesCard(){
     <li><b>Маскарад:</b> накал 3 — рейд: досье +1, все со следами там −1 Статус, контакт залегает на дно. Два агента ✕ на рассвете шагают к самому горячему району; если кто-то встал на накал 2+, досье +1. Городское дело: два вклада; закрыто — досье −1, нет — досье +1.</li>
     <li><b>Князь</b> (автома): указ на ночь, значок Шерифа после 1-й волны, Общий сбор после 2-й волны в чётные ночи или при досье ≥ ${CONFIG.gatherDossier}.</li>
     <li><b>Боны:</b> не больше ${CONFIG.maxDebts} у должника. Кредитор может потребовать ваш контакт; отказ — −1 Статус.</li>
-    <li>Все числа, контакты, замыслы, указы и дела — в начале кода страницы.</li></ul></details>`;
+    <li>Все числа, контакты, цели, указы и дела — в начале кода страницы.</li></ul></details>`;
 }
 function pickCard(){
   return `<div class="card active" style="max-width:1000px"><h2>Выберите клан</h2>
-    <p class="hint">Сюжет «Облава». Неделю назад в сеть утекло видео кормления, и в город прибыла оперативная группа Второй Инквизиции. Вы — один из кланов Камарильи, ещё два клана и Князь играют сами. Выполняйте замыслы через связи, долги и компромат — и не дайте Инквизиции заполнить досье, иначе проиграют все. Партия — 6 ночей по 3 волны, около получаса.</p>
-    <div class="clanpick">${Object.entries(CLANS).map(([id,c])=>`<button onclick="newGame('${id}')"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.disc.join(" · ")}</span><span>${c.ability}</span><span class="hint">${c.predator}: ${c.predText}. Стартовый контакт: ${CONTACTS.find(x=>x.d===c.start).name}.</span><span class="hint">Замыслы: ${PLOTS.filter(p=>p.clan===id).map(p=>p.title).join(", ")}.</span></button>`).join("")}</div></div>`;
+    <p class="hint">Сюжет «Облава». Неделю назад в сеть утекло видео кормления, и в город прибыла оперативная группа Второй Инквизиции. Вы — один из кланов Камарильи, ещё два клана и Князь играют сами. Добивайтесь своих целей через связи, долги и компромат — и не дайте Инквизиции заполнить досье, иначе проиграют все. Партия — 6 ночей по 3 волны, около получаса.</p>
+    <div class="clanpick">${Object.entries(CLANS).map(([id,c])=>`<button onclick="newGame('${id}')"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.disc.join(" · ")}</span><span>${c.ability}</span><span class="hint">${c.predator}: ${c.predText}. Стартовый контакт: ${CONTACTS.find(x=>x.d===c.start).name}.</span><span class="hint">Личные цели: ${PLOTS.filter(p=>p.clan===id).map(p=>p.title).join(", ")}.</span></button>`).join("")}</div></div>`;
 }
 function render(){
   const app=$("#app");
@@ -1143,54 +1147,55 @@ const audioEl=new Audio();audioEl.loop=true;
 let AC=null,ambGain=null,ambOn=false,ambNodes=[],ambTimers=[];
 function vol(){return +$("#vol").value}
 // Импульс реверберации: длинный мягкий хвост «большого зала»
-function makeImpulse(sec){const len=AC.sampleRate*sec;const b=AC.createBuffer(2,len,AC.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);let last=0;for(let i=0;i<len;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=last*3*Math.pow(1-i/len,2.5)}}return b}
+function makeImpulse(sec){const len=Math.floor(AC.sampleRate*sec);const b=AC.createBuffer(2,len,AC.sampleRate);
+  // белый шум с плавным экспоненциальным затуханием: ровный хвост без низкочастотного гула
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);const pre=Math.floor(AC.sampleRate*0.03);
+    for(let i=0;i<len;i++){const t=i/AC.sampleRate;const env=i<pre?i/pre:Math.exp(-t*3.2/sec);d[i]=(Math.random()*2-1)*env*0.5}}return b}
 function startAmbient(){
   AC=AC||new (window.AudioContext||window.webkitAudioContext)();
   if(AC.state==="suspended")AC.resume();
   const t0=AC.currentTime;
-  ambGain=AC.createGain();ambGain.gain.value=0;
-  const comp=AC.createDynamicsCompressor();comp.threshold.value=-24;comp.ratio.value=3;
-  ambGain.connect(comp);comp.connect(AC.destination);
-  ambGain.gain.linearRampToValueAtTime(vol()*0.6,t0+6);
-  // общая шина: мягкий фильтр + реверберация
-  const bus=AC.createBiquadFilter();bus.type="lowpass";bus.frequency.value=900;bus.Q.value=0.3;
-  const rev=AC.createConvolver();rev.buffer=makeImpulse(6);
-  const dry=AC.createGain();dry.gain.value=0.45;const wet=AC.createGain();wet.gain.value=0.8;
+  ambGain=AC.createGain();ambGain.gain.setValueAtTime(0,t0);
+  const master=AC.createBiquadFilter();master.type="lowpass";master.frequency.value=1600;master.Q.value=0.5;
+  const hp=AC.createBiquadFilter();hp.type="highpass";hp.frequency.value=45;hp.Q.value=0.5;
+  ambGain.connect(hp);hp.connect(master);master.connect(AC.destination);
+  ambGain.gain.linearRampToValueAtTime(vol()*2.2,t0+8);
+  const bus=AC.createGain();bus.gain.value=1;
+  const rev=AC.createConvolver();rev.buffer=makeImpulse(5);
+  const dry=AC.createGain();dry.gain.value=0.5;const wet=AC.createGain();wet.gain.value=0.55;
   bus.connect(dry);dry.connect(ambGain);bus.connect(rev);rev.connect(wet);wet.connect(ambGain);
-  // пэд: чистые синусы и треугольники с лёгкой расстройкой, плавно перетекающие между аккордами
-  const CHORDS=[[55,82.41,110,130.81],[43.65,87.31,110,130.81],[49,73.42,98,146.83],[41.2,82.41,123.47,98]];
+  // пэд: только синусы, открытые интервалы (квинты и октавы), без шершавых биений
+  const CHORDS=[[110,164.81,220,329.63],[87.31,130.81,174.61,261.63],[98,146.83,196,293.66],[82.41,123.47,164.81,246.94]];
+  const LEV=[0.14,0.08,0.055,0.03];
   const voices=CHORDS[0].map((f,i)=>{
-    const pair=[-3,3].map(cents=>{const o=AC.createOscillator();o.type=i===0?"sine":"triangle";o.frequency.value=f;o.detune.value=cents;return o});
-    const g=AC.createGain();g.gain.value=[0.22,0.12,0.08,0.05][i];
+    const g=AC.createGain();g.gain.value=LEV[i];
+    const o=AC.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start();ambNodes.push(o);
     const pan=AC.createStereoPanner?AC.createStereoPanner():null;
-    pair.forEach(o=>{o.connect(g);o.start();ambNodes.push(o)});
-    if(pan){pan.pan.value=[0,-0.35,0.35,0][i];g.connect(pan);pan.connect(bus)}else g.connect(bus);
-    // медленное «дыхание» громкости голоса
-    const lfo=AC.createOscillator();lfo.frequency.value=0.03+i*0.013;const lg=AC.createGain();lg.gain.value=g.gain.value*0.4;
+    if(pan){pan.pan.value=[0,-0.3,0.3,0][i];g.connect(pan);pan.connect(bus)}else g.connect(bus);
+    // очень медленное «дыхание» громкости
+    const lfo=AC.createOscillator();lfo.frequency.value=0.02+i*0.007;const lg=AC.createGain();lg.gain.value=LEV[i]*0.35;
     lfo.connect(lg);lg.connect(g.gain);lfo.start();ambNodes.push(lfo);
-    return pair;
+    return o;
   });
   let ci=0;
   const nextChord=()=>{if(!ambOn)return;ci=(ci+1)%CHORDS.length;const t=AC.currentTime;
-    voices.forEach((pair,i)=>pair.forEach(o=>o.frequency.setTargetAtTime(CHORDS[ci][i],t,4)));
-    ambTimers.push(setTimeout(nextChord,22000))};
-  ambTimers.push(setTimeout(nextChord,22000));
-  // мягкий «коричневый» шум города без слышимого стыка петли
-  const len=AC.sampleRate*12;const nb=AC.createBuffer(2,len,AC.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=nb.getChannelData(ch);let last=0;for(let i=0;i<len;i++){last=(last+0.02*(Math.random()*2-1))/1.02;d[i]=last*3}
-    const fade=AC.sampleRate*2;for(let i=0;i<fade;i++){const k=i/fade;d[i]=d[i]*k+d[len-fade+i]*(1-k)}}
-  const ns=AC.createBufferSource();ns.buffer=nb;ns.loop=true;ns.loopStart=0;ns.loopEnd=12-2;
-  const nf=AC.createBiquadFilter();nf.type="lowpass";nf.frequency.value=250;
-  const ng=AC.createGain();ng.gain.value=0.09;ns.connect(nf);nf.connect(ng);ng.connect(ambGain);ns.start();ambNodes.push(ns);
-  // редкие мягкие низкие ноты, утопающие в реверберации
-  const notes=[110,130.81,146.83,164.81,98,123.47];
+    voices.forEach((o,i)=>o.frequency.setTargetAtTime(CHORDS[ci][i],t,5));
+    ambTimers.push(setTimeout(nextChord,26000))};
+  ambTimers.push(setTimeout(nextChord,26000));
+  // тихий ветер: белый шум через мягкий полосовой фильтр, частота медленно «гуляет»
+  const len=AC.sampleRate*8;const nb=AC.createBuffer(1,len,AC.sampleRate);const nd=nb.getChannelData(0);for(let i=0;i<len;i++)nd[i]=Math.random()*2-1;
+  const ns=AC.createBufferSource();ns.buffer=nb;ns.loop=true;
+  const bp=AC.createBiquadFilter();bp.type="bandpass";bp.frequency.value=420;bp.Q.value=0.6;
+  const wl=AC.createOscillator();wl.frequency.value=0.045;const wlg=AC.createGain();wlg.gain.value=160;wl.connect(wlg);wlg.connect(bp.frequency);wl.start();ambNodes.push(wl);
+  const ng=AC.createGain();ng.gain.value=0.012;ns.connect(bp);bp.connect(ng);ng.connect(ambGain);ns.start();ambNodes.push(ns);
+  // редкие мягкие ноты, утопающие в реверберации
+  const notes=[220,261.63,293.66,329.63,196,246.94];
   const bell=()=>{if(!ambOn)return;const t=AC.currentTime;const f=pick(notes);
-    [1,2.01].forEach((m,j)=>{const o=AC.createOscillator();o.type="sine";o.frequency.value=f*m;
-      const g=AC.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(j?0.015:0.06,t+2.5);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+12);o.connect(g);g.connect(rev);g.connect(bus);o.start(t);o.stop(t+12.5)});
-    ambTimers.push(setTimeout(bell,9000+Math.random()*12000))};
-  ambTimers.push(setTimeout(bell,5000));
+    const o=AC.createOscillator();o.type="sine";o.frequency.value=f;
+    const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.035,t+2.5);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+11);o.connect(g);g.connect(bus);o.start(t);o.stop(t+11.5);
+    ambTimers.push(setTimeout(bell,10000+Math.random()*12000))};
+  ambTimers.push(setTimeout(bell,6000));
 }
 function stopAmbient(){if(!AC)return;const t=AC.currentTime;ambTimers.forEach(clearTimeout);ambTimers=[];
   const g=ambGain;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+3);
@@ -1200,7 +1205,7 @@ $("#trackIn").onchange=e=>{const f=e.target.files[0];if(!f)return;if(audioEl.src
   audioEl.src=URL.createObjectURL(f);audioEl.volume=vol();if(ambOn)$("#ambBtn").click();
   audioEl.play().then(()=>{$("#trackBtn").hidden=false;$("#trackBtn").textContent="Трек: пауза"}).catch(()=>{$("#trackBtn").hidden=false;$("#trackBtn").textContent="Трек: играть"})};
 $("#trackBtn").onclick=()=>{if(audioEl.paused){audioEl.play();$("#trackBtn").textContent="Трек: пауза"}else{audioEl.pause();$("#trackBtn").textContent="Трек: играть"}};
-$("#vol").oninput=()=>{audioEl.volume=vol();if(ambOn&&AC)ambGain.gain.setTargetAtTime(vol()*0.6,AC.currentTime,0.3)};
+$("#vol").oninput=()=>{audioEl.volume=vol();if(ambOn&&AC)ambGain.gain.setTargetAtTime(vol()*2.2,AC.currentTime,0.3)};
 // --- PWA: офлайн и установка ---
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 let deferredInstall=null;
