@@ -106,7 +106,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3 «Город»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.1 «Город»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <button id="ambBtn">Звук: выкл</button>
@@ -297,6 +297,36 @@ const ENC = {
  ],
 };
 
+
+/* ---- Предметы: дают встречи, лежат в сумке. На сборе в Элизиуме один можно поднести Князю ---- */
+const ITEMS = {
+  cargo:   {name:"Бирка с груза: «по поручению двора»", court:"Кто-то из двора возит по реке тела. Вот бирка с груза.", value:2},
+  ring:    {name:"Обручальное кольцо вдовца", court:"Вы подносите кольцо. Князь вертит его в пальцах: «Сентиментально»", value:0},
+  candle:  {name:"Свеча с вашим именем", court:"Кто-то в городе знает ваше настоящее имя. Князь мрачнеет: это касается всех.", value:1},
+  card:    {name:"Визитка хозяйки Неоновой мили", court:"Хозяйка Неоновой мили ищет союзников. Князь отмечает это про себя.", value:1},
+  circles: {name:"Страница с кругами ритуала", court:"Кто-то проводит запрещённые ритуалы на кладбище. Вот страница.", value:2},
+  bandage: {name:"Бинты и грелка из аптеки", court:"Князь смотрит на бинты с вежливым недоумением. Двор сдерживает смешки.", value:0},
+  envelope:{name:"Конверт с печатью мэрии", court:"Кто-то при дворе платит людям в мэрии. Вот конверт.", value:2},
+  photo:   {name:"Фото раскладушек и капельниц", court:"В промзоне держат людей как скот. Вот снимки.", value:2},
+  paint:   {name:"Баллончик краски охотников", court:"Охотники метят город перечёркнутым анхом. Вот их краска.", value:1},
+  package: {name:"Пакет, выкопанный на пустыре", court:"Охранная фирма из порта что-то закапывает на пустырях. Вот что.", value:2},
+};
+(function wireItems(){
+  const set=(g,i,ci,which,id)=>{const c=ENC[g][i].c[ci];(which?c[which]:c.o).item=id};
+  set("water",1,0,"ok","cargo"); set("water",0,0,null,"ring"); set("water",2,0,null,"candle");
+  set("club",2,0,null,"card"); set("sacred",1,0,"ok","circles"); set("city",2,0,null,"bandage");
+  set("city",4,0,"ok","envelope"); set("industry",1,0,"ok","photo"); set("industry",4,0,null,"paint"); set("nature",2,0,"ok","package");
+})();
+/* ---- Сбор двора во вторую ночь ---- */
+const COURT = {night:2, from:46, to:50}; // 23:00–01:00
+const PRINCES=[{name:"Аврелий Вейн",clan:"Вентру"},{name:"Северина Мор",clan:"Тореадор"},{name:"Гектор Ланге",clan:"Вентру"}];
+const RIVAL_LINES={
+  tor:"Тореадор улыбается вам через зал, как старому знакомому. Вы видите его впервые.",
+  ven:"Вентру кивает вам ровно настолько, насколько требует этикет.",
+  nos:"Носферату стоит в тени колонны. Кажется, он знает о вашей ночи больше вас.",
+  bru:"Бруха смотрит на Князя так, будто пересчитывает его охрану.",
+  tre:"Тремер не поднимает глаз от перстня. Перстень, кажется, смотрит на вас.",
+};
 /* ============================ СЛУЖЕБНОЕ ============================ */
 const $ = s => document.querySelector(s);
 function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
@@ -440,7 +470,7 @@ function riverSvg(map,path){
 function newCity(seed){
   const s=seed??Math.floor(Math.random()*1e9);
   const city=generate(s);
-  G={seed:s,city,phase:"gen",genStart:performance.now(),clan:null,haven:null,pos:null,night:1,time:CONFIG.nightStart,hunger:1,alarm:0,
+  G={seed:s,city,phase:"gen",genStart:performance.now(),clan:null,haven:null,pos:null,night:1,time:CONFIG.nightStart,hunger:1,alarm:0,status:2,items:[],courtDone:false,court:null,prince:null,rivals:[],
      seen:new Set(),visited:new Set(),visitedTonight:new Set(),secrets:[],log:[],enc:null,path:[],usedEnc:new Set(),cam:null,zoom:"near"};
   rng=Math.random; // дальше — обычная случайность
   buildBoard();render();
@@ -454,7 +484,8 @@ function chooseClan(id){
   G.clan=id;
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
-  G.haven=h.k;G.pos=h.k;reveal(h.k);G.visited.add(h.k);G.visitedTonight.add(h.k);
+  G.haven=h.k;G.pos=h.k;reveal(h.k);G.visited.add(h.k);G.visitedTonight.add(h.k);G.seen.add("0,0");
+  G.prince=pick(PRINCES);G.rivals=shuffle(Object.keys(CLANS).filter(x=>x!==id)).slice(0,2);
   G.phase="walk";
   addLog(`<b>Ночь 1.</b> Вы просыпаетесь в своём убежище: «${h.name}». До рассвета — ${(CONFIG.nightEnd-G.time)/2} часов.`);
   focusCam(true);render();
@@ -484,12 +515,48 @@ function walkStep(){
   const h=G.city.map[k];
   if(first)addLog(`Вы впервые в районе «${h.name}» (${TYPES[h.t].n}).`);
   focusCam();
+  if(k==="0,0"&&G.night===COURT.night&&!G.courtDone&&G.time<=COURT.to){G.path=[];startCourt();return}
+  if(checkCourt())return;
   // встреча
   if(h.t!=="ely"&&firstTonight&&rng()<(first?CONFIG.encounterFirst:CONFIG.encounterAgain)){G.path=[];startEncounter(h);render();return}
   if(G.time===CONFIG.nightEnd-2)addLog("<b>Небо на востоке сереет.</b> Час до рассвета — пора к убежищу.");
   if(G.time>=CONFIG.nightEnd){G.path=[];render();setTimeout(dawn,500);return}
   render();
   if(G.path.length)setTimeout(walkStep,reduceMotion()?60:360);
+}
+function checkCourt(){
+  if(G.night===COURT.night&&!G.courtDone&&G.time>COURT.to){G.courtDone=true;G.status=clamp(G.status-2,0,5);
+    addLog(`<b>Двор собрался без вас.</b> Князь ${G.prince.name} заметил ваше отсутствие. Статус −2.`);render();return false}
+  return false;
+}
+function startCourt(){
+  if(G.time<COURT.from){addLog("Вы приходите в Элизиум рано и ждёте, пока соберётся двор.");G.time=COURT.from}
+  G.phase="court";G.court={step:0,gave:null};addLog(`<b>Элизиум.</b> Двор Князя ${G.prince.name} собирается.`,true);render();
+}
+function courtNext(){G.court.step++;render()}
+function courtGive(id){
+  const it=ITEMS[id];G.items=G.items.filter(x=>x!==id);G.status=clamp(G.status+it.value,0,5);G.court.gave=id;
+  addLog(`При дворе вы подносите Князю: «${it.name}». ${it.value?`Статус +${it.value}.`:"Князь не впечатлён."}`);G.court.step=3;render();
+}
+function leaveCourt(){G.courtDone=true;G.phase="walk";G.court=null;G.time=Math.min(CONFIG.nightEnd,G.time+2);addLog("Двор расходится. Вы выходите в ночь.");setDistrictSound();render()}
+function courtCard(){
+  const c=G.court,P=G.prince;
+  const head=`<span class="eyebrow">Элизиум · двор Князя</span>`;
+  if(c.step===0)return `<div class="enc">${head}<h2>Галерея Ровена</h2>
+    <p>Свечи, картины в тяжёлых рамах, тихие голоса. У камина в кресле — Князь ${P.name}, клан ${P.clan}. Вдоль стен — Сородичи города, и вы впервые видите тех, кто ходил по этим улицам рядом с вами.</p>
+    <ul>${G.rivals.map(r=>`<li><b style="color:${CLANS[r].color}">${CLANS[r].name}</b> — ${RIVAL_LINES[r]}</li>`).join("")}</ul>
+    <button class="primary" onclick="courtNext()">Слушать Князя</button></div>`;
+  if(c.step===1)return `<div class="enc">${head}<h2>Слово Князя</h2>
+    <p>«Неделю назад в сеть попало видео: один из нас кормился в подворотне. Ролик удалили, но его успели увидеть. В городе Вторая Инквизиция».</p>
+    <p>«С этой ночи — никакой охоты на виду и никаких следов. Тот, кто подставит двор, ответит передо мной. А тот, кто знает что-то полезное, — пусть скажет сейчас».</p>
+    <button class="primary" onclick="courtNext()">Дальше</button></div>`;
+  if(c.step===2)return `<div class="enc">${head}<h2>Дары и вести</h2><p>Князь принимает подношения. Можно поднести один предмет из сумки — или промолчать.</p>
+    <div class="choices">${G.items.map(id=>`<button onclick="courtGive('${id}')">Поднести: ${ITEMS[id].name}${ITEMS[id].value?` <span class="risk" style="color:var(--lamp);border-color:var(--lamp)">Статус +${ITEMS[id].value}</span>`:""}</button>`).join("")||'<p class="hint">Сумка пуста. Нечего поднести.</p>'}
+    <button onclick="G.court.step=3;addLog('При дворе вы промолчали.');render()">Промолчать</button></div></div>`;
+  return `<div class="enc">${head}<h2>Двор расходится</h2>
+    <p>${c.gave?ITEMS[c.gave].court:"Вы промолчали. Иногда это мудрее."}</p>
+    <p class="hint">Ваш Статус при дворе: ${G.status} из 5.</p>
+    <button class="primary" onclick="leaveCourt()">Покинуть Элизиум</button></div>`;
 }
 function goHome(){const p=bfs(G.pos,G.haven);if(p&&p.length){G.path=p;walkStep()}}
 function hunt(){
@@ -499,9 +566,9 @@ function hunt(){
   const out=ok?{hunger:busy?-2:-1}:{alarm:1};apply(out);
   addLog(`Охота в «${h.name}» [${dice.join(" ")}]: ${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1."):"вас заметили, пришлось уйти ни с чем. Тревога +1."}`);
   if(G.alarm>=CONFIG.alarmMax){closeEnc();return}
-  if(G.time>=CONFIG.nightEnd){dawn();return}render();
+  checkCourt();if(G.time>=CONFIG.nightEnd){dawn();return}render();
 }
-function waitHere(){G.time=Math.min(CONFIG.nightEnd,G.time+1);addLog("Вы ждёте, наблюдая за улицей.");if(G.time>=CONFIG.nightEnd)dawn();else render()}
+function waitHere(){G.time=Math.min(CONFIG.nightEnd,G.time+1);addLog("Вы ждёте, наблюдая за улицей.");checkCourt();if(G.time>=CONFIG.nightEnd)dawn();else render()}
 function startEncounter(h){
   const g=TYPES[h.t].g;const pool=ENC[g].filter((e,i)=>!G.usedEnc.has(g+i));
   const list=pool.length?pool:ENC[g];const e=pick(list);G.usedEnc.add(g+ENC[g].indexOf(e));
@@ -515,18 +582,20 @@ function chooseEnc(i){
   addLog(`<b>${G.enc.e.t}.</b> ${ch.t}: ${out.text}${fxText(out)?" <span class='fx'>"+fxText(out)+"</span>":""}`);
   render();
 }
-function fxText(o){const a=[];if(o.hunger)a.push(`Голод ${o.hunger>0?"+":"−"}${Math.abs(o.hunger)}`);if(o.alarm)a.push(`Тревога ${o.alarm>0?"+":"−"}${Math.abs(o.alarm)}`);if(o.time)a.push(o.time>0?`+${o.time*30} мин`:`−${-o.time*30} мин`);if(o.secret)a.push("новая запись в дневнике");return a.join(" · ")}
+function fxText(o){const a=[];if(o.hunger)a.push(`Голод ${o.hunger>0?"+":"−"}${Math.abs(o.hunger)}`);if(o.alarm)a.push(`Тревога ${o.alarm>0?"+":"−"}${Math.abs(o.alarm)}`);if(o.time)a.push(o.time>0?`+${o.time*30} мин`:`−${-o.time*30} мин`);if(o.secret)a.push("новая запись в дневнике");if(o.item)a.push("в сумку: "+ITEMS[o.item].name);return a.join(" · ")}
 function apply(o){
   if(o.hunger)G.hunger=clamp(G.hunger+o.hunger,0,CONFIG.hungerMax);
   if(o.alarm)G.alarm=clamp(G.alarm+o.alarm,0,CONFIG.alarmMax);
   if(o.time)G.time=clamp(G.time+o.time,CONFIG.nightStart,CONFIG.nightEnd);
+  if(o.item&&ITEMS[o.item]&&!G.items.includes(o.item))G.items.push(o.item);
+  if(o.status)G.status=clamp(G.status+o.status,0,5);
   if(o.secret&&!G.secrets.some(s=>s.t===o.secret))G.secrets.push({t:o.secret,n:G.night,where:G.city.map[G.pos].name});
 }
 function closeEnc(){
   G.enc=null;
   if(G.alarm>=CONFIG.alarmMax){G.phase="end";G.result="lost";addLog("<b>Маскарад рухнул.</b> Слишком много видели, слишком много говорят. Князь отрекается от вас.");render();return}
   if(G.hunger>=CONFIG.hungerMax){G.hunger=2;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);addLog("<b>Зверь вырывается наружу.</b> Вы приходите в себя в чужом подъезде. Голод утолён, но кто-то кричал. Тревога +2.")}
-  if(G.time>=CONFIG.nightEnd){dawn();return}
+  checkCourt();if(G.time>=CONFIG.nightEnd){dawn();return}
   render();
 }
 function dawn(){
@@ -541,6 +610,7 @@ function dawn(){
 function nextNight(){
   G.night++;G.time=CONFIG.nightStart;G.pos=G.haven;G.visitedTonight=new Set([G.haven]);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm-1,0,CONFIG.alarmMax);
   G.phase="walk";addLog(`<b>Ночь ${G.night}.</b> Голод +1 после пробуждения. За день слухи немного улеглись: Тревога −1.`);
+  if(G.night===COURT.night)addLog(`<b>Гонец Князя:</b> сегодня двор собирается в Элизиуме с 23:00 до 01:00. Отсутствие будет замечено.`);
   focusCam(true);setDistrictSound();render();
 }
 const reduceMotion=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -606,7 +676,7 @@ function drawFog(){
 function drawMarks(){
   if(!G||!$("#marks"))return;
   let s="";
-  if(G.phase==="walk"||G.phase==="day"||G.phase==="end"){
+  if(G.phase==="walk"||G.phase==="day"||G.phase==="end"||G.phase==="court"){
     // соседние районы, куда можно шагнуть
     if(G.phase==="walk"&&!G.enc)for(const n of nbrs(G.pos)){const h=G.city.map[n];const [x,y]=px(h.q,h.r);s+=`<polygon points="${ptsStr(hexPts(x,y,.9))}" fill="none" stroke="#d9c9a0" stroke-width="1.4" stroke-dasharray="3 3" opacity=".7"/>`}
     // путь при наведении
@@ -629,7 +699,7 @@ function hud(){
   const left=Math.max(0,CONFIG.nightEnd-G.time);const pct=(G.time-CONFIG.nightStart)/(CONFIG.nightEnd-CONFIG.nightStart)*100;
   return `<div class="hud">
     <div class="clock"><span class="big">${fmtTime(G.time)}</span><span class="hint">ночь ${G.night} из ${CONFIG.nights} · до рассвета ${Math.floor(left/2)} ч${left%2?" 30 мин":""}</span><div class="sky"><span style="width:${pct}%"></span></div></div>
-    <div class="meters"><span title="Голод">Голод <b class="pips">${"●".repeat(G.hunger)}${"○".repeat(CONFIG.hungerMax-G.hunger)}</b></span><span title="Тревога Маскарада">Тревога <b>${G.alarm}/${CONFIG.alarmMax}</b></span><span>Районы <b>${G.visited.size}/${Object.keys(G.city.map).length}</b></span><span>Тайны <b>${G.secrets.length}</b></span></div></div>`;
+    <div class="meters"><span title="Статус при дворе">Статус <b>${"★".repeat(G.status)}${"☆".repeat(5-G.status)}</b></span><span title="Голод">Голод <b class="pips">${"●".repeat(G.hunger)}${"○".repeat(CONFIG.hungerMax-G.hunger)}</b></span><span title="Тревога Маскарада">Тревога <b>${G.alarm}/${CONFIG.alarmMax}</b></span><span>Районы <b>${G.visited.size}/${Object.keys(G.city.map).length}</b></span><span>Тайны <b>${G.secrets.length}</b></span><span>Сумка <b>${G.items.length}</b></span></div></div>`;
 }
 function hereCard(){
   const k=G.sel&&G.sel!==G.pos?G.sel:G.pos;const h=G.city.map[k];const known=G.visited.has(k),seen=G.seen.has(k);
@@ -657,6 +727,18 @@ function encCard(){
   return `<div class="enc"><span class="eyebrow">${h.name} · встреча</span><h2>${E.e.t}</h2><p>${E.e.x}</p>
     <div class="choices">${E.e.c.map((c,i)=>`<button onclick="chooseEnc(${i})">${c.t}${c.roll?' <span class="risk">риск</span>':""}</button>`).join("")}</div></div>`;
 }
+function bagCard(){
+  return `<div class="card"><div class="row" style="justify-content:space-between"><h2>Сумка</h2><span class="tag">${G.items.length}</span></div>
+    ${G.items.length?`<ul>${G.items.map(id=>`<li>${ITEMS[id].name}</li>`).join("")}</ul>`:'<p class="hint">Пусто. Некоторые встречи дают вещи — их можно поднести Князю.</p>'}</div>`;
+}
+function summonsCard(){
+  if(G.night!==COURT.night||G.courtDone||G.enc)return "";
+  const p=bfs(G.pos,"0,0");const t=p?p.length:0;const late=G.time+t>COURT.to;
+  return `<div class="card intro"><span class="eyebrow">Вызов</span><h2>Двор собирается в Элизиуме</h2>
+    <p>Князь ${G.prince.name} ждёт всех Сородичей города с 23:00 до 01:00. Не прийти — значит потерять Статус.</p>
+    ${G.pos==="0,0"?`<button class="primary" onclick="startCourt()">Войти в галерею</button>`:`<button class="${late?"":"primary"}" onclick="clickHex('0,0')">Идти в Элизиум · ${t*30} мин</button>`}
+    ${late&&G.pos!=="0,0"?'<p class="hint" style="color:var(--blood)">Вы уже не успеваете к 01:00.</p>':""}</div>`;
+}
 function journalCard(){
   return `<details class="card" ${G.secrets.length?"open":""}><summary><h2 style="display:inline">Дневник</h2> <span class="tag">${G.secrets.length}</span></summary>
     ${G.secrets.length?`<ul class="secrets">${G.secrets.map(s=>`<li>${s.t} <span class="hint">— ночь ${s.n}, ${s.where}</span></li>`).join("")}</ul>`:'<p class="hint">Тайны, которые вы узнаете во встречах, будут записаны здесь.</p>'}
@@ -674,7 +756,7 @@ function clanCard(){
 }
 function walkIntroCard(){
   return `<div class="card intro"><span class="eyebrow">Ночь первая</span><h2>Выйти в город</h2><p>Пройдитесь по городу. Узнайте его районы, людей и тайны. Каждый шаг — полчаса ночи. Встречи на улицах могут накормить вас, рассказать что-то важное — или поставить под угрозу Маскарад.</p>
-    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂), иначе день будет тяжёлым.</li></ul>
+    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂), иначе день будет тяжёлым.</li><li>Некоторые встречи дают <b>предметы</b>. Сохраните их: завтра Князь созывает двор в Элизиуме, и там их можно поднести.</li></ul>
     <button class="primary" onclick="G.introDone=true;render()">Понятно</button></div>`;
 }
 function dayCard(){
@@ -684,7 +766,7 @@ function dayCard(){
 function endCard(){
   const tot=Object.keys(G.city.map).length;
   return `<div class="card intro"><span class="eyebrow">${G.result==="lost"?"Конец":"Пять ночей прошло"}</span><h2>${G.result==="lost"?"Маскарад рухнул":"Вы узнали свой город"}</h2>
-    <p>Открыто районов: <b>${G.visited.size} из ${tot}</b>. Тайн: <b>${G.secrets.length}</b>. Тревога: ${G.alarm}/${CONFIG.alarmMax}.</p>
+    <p>Статус при дворе: <b>${G.status} из 5</b>. Открыто районов: <b>${G.visited.size} из ${tot}</b>. Тайн: <b>${G.secrets.length}</b>. Тревога: ${G.alarm}/${CONFIG.alarmMax}.</p>
     <div class="row"><button class="primary" onclick="newCity()">Новый город</button><button onclick="restartSame()">Этот же город заново</button></div></div>`;
 }
 function restartSame(){const s=G.seed;newCity(s)}
@@ -694,8 +776,9 @@ function render(){
   let side="";
   if(G.phase==="gen"||G.phase==="built")side=genCard();
   else if(G.phase==="clan")side=clanCard();
-  else if(G.phase==="walk"){side=(G.enc?encCard():"")+(!G.introDone&&!G.enc?walkIntroCard():"")+hereCard()+actionsCard()+journalCard()}
-  else if(G.phase==="day")side=dayCard()+journalCard();
+  else if(G.phase==="walk"){side=(G.enc?encCard():"")+(!G.introDone&&!G.enc?walkIntroCard():"")+summonsCard()+hereCard()+actionsCard()+bagCard()+journalCard()}
+  else if(G.phase==="court")side=courtCard()+bagCard();
+  else if(G.phase==="day")side=dayCard()+bagCard()+journalCard();
   else if(G.phase==="end")side=endCard()+journalCard();
   $("#side").innerHTML=side;
   $("#zoom").hidden=!G.clan;
