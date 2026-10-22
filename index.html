@@ -106,7 +106,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.1 «Город»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.2 «Город»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <button id="ambBtn">Звук: выкл</button>
@@ -812,32 +812,32 @@ function startAudio(){
   master.connect(hp);hp.connect(lp);lp.connect(AC.destination);
   const rev=AC.createConvolver();rev.buffer=impulse(5);const wet=AC.createGain();wet.gain.value=.55;rev.connect(wet);wet.connect(master);
   const bus=AC.createGain();bus.connect(master);bus.connect(rev);
-  // пэд
-  const CH=[[110,164.81,220,329.63],[87.31,130.81,174.61,261.63],[98,146.83,196,293.66],[82.41,123.47,164.81,246.94]];const LEV=[.12,.07,.045,.025];
-  const padG=AC.createGain();padG.gain.value=1;padG.connect(bus);
-  const vs=CH[0].map((f,i)=>{const o=AC.createOscillator();o.frequency.value=f;const g=AC.createGain();g.gain.value=LEV[i];o.connect(g);g.connect(padG);o.start();
-    const l=AC.createOscillator();l.frequency.value=.02+i*.007;const lg=AC.createGain();lg.gain.value=LEV[i]*.35;l.connect(lg);lg.connect(g.gain);l.start();padNodes.push(o,l);return o});
-  let ci=0;loop(()=>{ci=(ci+1)%CH.length;vs.forEach((o,i)=>o.frequency.setTargetAtTime(CH[ci][i],AC.currentTime,5))},26000,26000);
+  // пэд: не сплошной гул, а редкие «вдохи» — аккорд мягко нарастает, держится и затихает, потом тишина
+  const CH=[[220,329.63,440],[174.61,261.63,349.23],[196,293.66,392],[164.81,246.94,329.63]];const LEV=[.06,.035,.02];
+  let ci=0;
+  const breathe=()=>{const t=AC.currentTime;const ch=CH[ci];ci=(ci+1)%CH.length;
+    ch.forEach((f,k)=>{const o=AC.createOscillator();o.frequency.value=f;const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(LEV[k],t+6);g.gain.setValueAtTime(LEV[k],t+10);g.gain.exponentialRampToValueAtTime(0.0001,t+17);
+      o.connect(g);g.connect(bus);o.start(t);o.stop(t+17.5)})};
+  breathe();loop(breathe,24000,38000);
   // слои районов: у каждого свой гейн, громкость меняется при переходе
   const mk=()=>{const g=AC.createGain();g.gain.value=0;g.connect(bus);return g};
   layers={water:mk(),club:mk(),sacred:mk(),city:mk(),industry:mk(),nature:mk()};
   // вода: низкий туманный гудок и колокол буя
-  loop(()=>{const t=AC.currentTime;note(layers.water,73.4,t,3,6,.09);note(layers.water,110,t+.2,3,5,.03)},18000,30000);
+  loop(()=>{const t=AC.currentTime;note(layers.water,110,t,2.5,4,.035)},45000,80000);
   loop(()=>{const t=AC.currentTime;note(layers.water,880,t,.01,6,.025);note(layers.water,1320,t,.01,4,.01)},7000,13000);
   // клубы: глухая бочка сквозь стены и приглушённые аккорды
-  loop(()=>{const t=AC.currentTime;for(let i=0;i<16;i++){const tt=t+i*.54;const o=AC.createOscillator();o.frequency.setValueAtTime(90,tt);o.frequency.exponentialRampToValueAtTime(48,tt+.18);const g=AC.createGain();g.gain.setValueAtTime(.0001,tt);g.gain.exponentialRampToValueAtTime(.11,tt+.01);g.gain.exponentialRampToValueAtTime(.0001,tt+.3);o.connect(g);g.connect(layers.club);o.start(tt);o.stop(tt+.35)}},8640,8640);
+  loop(()=>{const t=AC.currentTime;for(let i=0;i<8;i++){const tt=t+i*.54;const o=AC.createOscillator();o.frequency.setValueAtTime(90,tt);o.frequency.exponentialRampToValueAtTime(48,tt+.18);const g=AC.createGain();g.gain.setValueAtTime(.0001,tt);g.gain.exponentialRampToValueAtTime(.06,tt+.01);g.gain.exponentialRampToValueAtTime(.0001,tt+.3);o.connect(g);g.connect(layers.club);o.start(tt);o.stop(tt+.35)}},14000,26000);
   loop(()=>{const t=AC.currentTime;[220,261.63,329.63].forEach(f=>note(layers.club,f,t,.4,2.5,.012,"triangle"))},4300,9000);
   // святыни и старый город: высокие колокольные ноты и органная квинта
   loop(()=>{const t=AC.currentTime;const f=[523.25,587.33,659.25,783.99][Math.floor(Math.random()*4)];note(layers.sacred,f,t,.01,7,.03);note(layers.sacred,f*2.76,t,.01,3,.006)},6000,12000);
-  {const o1=AC.createOscillator(),o2=AC.createOscillator();o1.frequency.value=196;o2.frequency.value=293.66;const g=AC.createGain();g.gain.value=.012;o1.connect(g);o2.connect(g);g.connect(layers.sacred);o1.start();o2.start();padNodes.push(o1,o2)}
   // жилые и деловые: далёкое пианино из окна
   loop(()=>{const t=AC.currentTime;const sc=[220,246.94,261.63,293.66,329.63,392,440];for(let i=0;i<3+Math.floor(Math.random()*3);i++)note(layers.city,sc[Math.floor(Math.random()*sc.length)],t+i*(.45+Math.random()*.3),.01,2.2,.022,"triangle")},5000,11000);
   // промзона: металлические отзвуки и низкий гул машин
-  loop(()=>{const t=AC.currentTime;note(layers.industry,141,t,.005,3.5,.03);note(layers.industry,371,t,.005,2.2,.012);note(layers.industry,598,t,.005,1.4,.006)},5000,10000);
-  {const o=AC.createOscillator();o.frequency.value=61.7;const g=AC.createGain();g.gain.value=.03;o.connect(g);g.connect(layers.industry);o.start();padNodes.push(o)}
+  loop(()=>{const t=AC.currentTime;note(layers.industry,371,t,.005,2.2,.012);note(layers.industry,598,t,.005,1.4,.006)},9000,18000);
   // парк и пустыри: редкие птичьи «чириканья» и сверчки-тона
   loop(()=>{const t=AC.currentTime;const f=2200+Math.random()*900;for(let i=0;i<2+Math.floor(Math.random()*3);i++){const o=AC.createOscillator();o.frequency.setValueAtTime(f,t+i*.12);o.frequency.exponentialRampToValueAtTime(f*1.25,t+i*.12+.06);const g=AC.createGain();g.gain.setValueAtTime(.0001,t+i*.12);g.gain.exponentialRampToValueAtTime(.008,t+i*.12+.01);g.gain.exponentialRampToValueAtTime(.0001,t+i*.12+.09);o.connect(g);g.connect(layers.nature);o.start(t+i*.12);o.stop(t+i*.12+.12)}},4000,9000);
-  loop(()=>{const t=AC.currentTime;note(layers.nature,392,t,1.5,4,.02);note(layers.nature,587.33,t+.6,1.5,4,.012)},9000,16000);
+  loop(()=>{const t=AC.currentTime;note(layers.nature,587.33,t,1.2,3,.01)},14000,24000);
   setDistrictSound(true);
 }
 function setDistrictSound(instant){
