@@ -37,7 +37,8 @@ p{margin:0;max-width:62ch}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
 @media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
 .board{position:relative;background:#090a10;border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
-#mapwrap svg{display:block;width:100%;height:min(78vh,820px)}
+#mapwrap svg{display:block;width:100%;height:min(78vh,820px);touch-action:none;cursor:grab}
+#mapwrap svg:active{cursor:grabbing}
 @media (max-width:960px){#mapwrap svg{height:58vh}}
 #zoom{position:absolute;right:10px;top:10px;display:flex;gap:4px}
 #zoom button{padding:4px 9px;font-size:.8rem;background:rgba(22,24,35,.85)}
@@ -106,7 +107,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.3 «Город»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.4 «Город»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <button id="ambBtn">Звук: выкл</button>
@@ -120,7 +121,7 @@ footer{margin-top:22px;max-width:1000px}
 </div>
 <div class="grid">
   <div class="board"><div id="mapwrap"></div>
-    <div id="zoom" hidden><button data-z="near">Рядом</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
+    <div id="zoom" hidden><button data-z="near">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
   <div class="col" id="side"></div>
 </div>
 <footer class="hint"><a href="intriga-v02.html" style="color:var(--dim)">Прошлая версия v0.2 «Ночная интрига»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
@@ -768,9 +769,31 @@ function focusCam(instant){
     G.cam={x:from.x+(t.x-from.x)*e,y:from.y+(t.y-from.y)*e,w:from.w+(t.w-from.w)*e,h:from.h+(t.h-from.h)*e};applyCam();if(k<1)camAnim=requestAnimationFrame(step)};
   camAnim=requestAnimationFrame(step);
 }
-function applyCam(){const c=G.cam;const m=$("#map");if(m&&c)m.setAttribute("viewBox",`${c.x.toFixed(1)} ${c.y.toFixed(1)} ${c.w.toFixed(1)} ${c.h.toFixed(1)}`)}
+function applyCam(){if(!G.cam)G.cam=targetCam();const c=G.cam;const m=$("#map");if(m&&c)m.setAttribute("viewBox",`${c.x.toFixed(1)} ${c.y.toFixed(1)} ${c.w.toFixed(1)} ${c.h.toFixed(1)}`)}
 function setZoom(z){G.zoom=z;focusCam();render()}
 
+
+/* ---------- прокрутка и масштаб карты: перетаскивание, колесо, щипок ---------- */
+function initPanZoom(){
+  const svg=$("#map");if(!svg)return;
+  const pts=new Map();let start=null,pinch=null;
+  const scale=()=>{const c=G.cam,r=svg.getBoundingClientRect();return Math.max(c.w/r.width,c.h/r.height)};
+  const world=(cx,cy)=>{const c=G.cam,r=svg.getBoundingClientRect(),k=scale();const ox=(r.width*k-c.w)/2,oy=(r.height*k-c.h)/2;return [c.x-ox+(cx-r.left)*k,c.y-oy+(cy-r.top)*k]};
+  const clampCam=()=>{const b=bounds(),c=G.cam;const minW=b.w*.25,maxW=b.w*1.25;if(c.w<minW){const f=minW/c.w;c.x-=(c.w*f-c.w)/2;c.y-=(c.h*f-c.h)/2;c.w*=f;c.h*=f}
+    if(c.w>maxW){const f=maxW/c.w;c.x-=(c.w*f-c.w)/2;c.y-=(c.h*f-c.h)/2;c.w*=f;c.h*=f}
+    c.x=clamp(c.x,b.x-c.w*.5,b.x+b.w-c.w*.5);c.y=clamp(c.y,b.y-c.h*.5,b.y+b.h-c.h*.5)};
+  const zoomAt=(f,cx,cy)=>{const [wx,wy]=world(cx,cy);const c=G.cam;c.x=wx-(wx-c.x)*f;c.y=wy-(wy-c.y)*f;c.w*=f;c.h*=f;clampCam();applyCam()};
+  svg.addEventListener("pointerdown",e=>{cancelAnimationFrame(camAnim);pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===1){start={x:e.clientX,y:e.clientY,cam:{...G.cam}};G.dragged=false}
+    if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])}}});
+  svg.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d>0){zoomAt(pinch.d/d,(a[0]+b[0])/2,(a[1]+b[1])/2);pinch.d=d;G.dragged=true}return}
+    if(start){const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.hypot(dx,dy)>6)G.dragged=true;
+      if(G.dragged){const k=scale();G.cam.x=start.cam.x-dx*k;G.cam.y=start.cam.y-dy*k;clampCam();applyCam()}}});
+  const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(!pts.size){start=null;setTimeout(()=>{G.dragged=false},0)}};
+  svg.addEventListener("pointerup",up);svg.addEventListener("pointercancel",up);svg.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")up(e)});
+  svg.addEventListener("wheel",e=>{e.preventDefault();cancelAnimationFrame(camAnim);zoomAt(e.deltaY>0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
+}
 /* ============================ ПОСТРОЕНИЕ КАРТЫ ============================ */
 function buildBoard(){
   const c=G.city;let tiles="",labels="";
@@ -795,8 +818,8 @@ function buildBoard(){
     <g id="fog"></g><g id="marks"></g><g id="hits"></g></svg>`;
   // кликабельные зоны поверх всего
   let hits="";for(const h of Object.values(c.map)){const [x,y]=px(h.q,h.r);hits+=`<polygon data-k="${h.k}" points="${ptsStr(hexPts(x,y,.98))}" fill="transparent"/>`}
-  $("#hits").innerHTML=hits;
-  $("#hits").querySelectorAll("polygon").forEach(p=>{p.onclick=()=>clickHex(p.dataset.k);p.onmouseenter=()=>{G.hover=p.dataset.k;drawMarks()};p.onmouseleave=()=>{G.hover=null;drawMarks()}});
+  $("#hits").innerHTML=hits;initPanZoom();
+  $("#hits").querySelectorAll("polygon").forEach(p=>{p.onclick=()=>{if(G.dragged)return;clickHex(p.dataset.k)};p.onmouseenter=()=>{G.hover=p.dataset.k;drawMarks()};p.onmouseleave=()=>{G.hover=null;drawMarks()}});
 }
 function drawFog(){
   if(G.phase==="gen"||G.phase==="built"||G.phase==="clan"){$("#fog").innerHTML="";return}
