@@ -112,7 +112,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.9 «Город»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.3.10 «Город»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -753,7 +753,12 @@ function isMovable(obj){const m=OBJECTS[obj].movable;return typeof m==="function
 function verbText(o){return VERBS[o.verb]}
 function assignOrders(){
   const T=G.truth;const loc={};
-  const spot=a=>{const c=Object.values(G.city.map).filter(h=>a.includes(h.t)&&h.k!==G.haven);return (c.length?pick(c):pick(Object.values(G.city.map).filter(h=>h.t!=="ely"&&h.t!=="river"))).k};
+  // цель — не рядом с убежищем: среди подходящих районов берётся дальняя половина, минимум 3 шага
+  const hd=(x,y)=>{const A=G.city.map[x],B=G.city.map[y];return Math.max(Math.abs(A.q-B.q),Math.abs(A.r-B.r),Math.abs(A.q+A.r-B.q-B.r))};
+  const spot=a=>{let c=Object.values(G.city.map).filter(h=>a.includes(h.t)&&h.k!==G.haven);
+    if(!c.length)c=Object.values(G.city.map).filter(h=>h.t!=="ely"&&h.t!=="river");
+    c.sort((x,y)=>hd(y.k,G.haven)-hd(x.k,G.haven));const far=c.filter(h=>hd(h.k,G.haven)>=3);
+    const pool=(far.length?far:c).slice(0,Math.max(1,Math.ceil((far.length||c.length)/2)));return pick(pool).k};
   loc.author=spot(areaOf("author"));loc.agents=spot(AGENT_AREA);loc.feeder=spot(ALLEY_AREA);
   loc.evidence=T.evidence==="filmer"?loc.author:T.evidence==="inquisition"?loc.agents:spot(areaOf("evidence"));
   const objs=shuffle(Object.keys(OBJECTS));const mine=objs[0];const mv=pick(OBJECTS[mine].verbs());
@@ -869,7 +874,7 @@ function startEncounter(h){
 }
 function chooseEnc(i){
   const ch=G.enc.e.c[i];let out=ch.o,dice=null;
-  if(ch.roll){const n=G.hunger>=4?2:3;dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
+  if(ch.roll){const n=G.enc&&G.enc.quest?(G.hunger>=4?1:2):(G.hunger>=4?2:3);dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
   apply(out);
   if(G.enc.quest&&out.flee){const o=G.order;const opts=nbrs(o.k).filter(x=>!["river","ely"].includes(G.city.map[x].t));const n=opts.length?pick(opts):o.k;
     o.k=n;o.known=n;G.seen.add(n);o.hint=`${OBJ_WHO[o.obj]} — в «${G.city.map[n].name}», вы видели, куда унесли.`;out={...out,text:out.text+` Он скрывается в соседнем районе — «${G.city.map[n].name}». Догоняйте.`}}
