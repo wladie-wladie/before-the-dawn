@@ -88,11 +88,23 @@ button.act small{color:var(--dim);font-size:.78rem}
 .ev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.85rem;padding:4px 6px;background:var(--panel2);border-radius:4px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;color:var(--dim);margin-top:6px}
 .sel-note{font-size:.88rem;color:var(--lamp)}
+.stage{border-color:var(--lamp);gap:10px}
+.stage .step{font-family:var(--f-mono);font-size:.72rem;color:var(--lamp);letter-spacing:.08em;text-transform:uppercase}
+.stage p{max-width:62ch}
+.stage ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.stage .lines{display:flex;flex-direction:column;gap:4px;font-size:.88rem;max-height:340px;overflow:auto}
+.stage .lines div{border-left:2px solid var(--line);padding-left:8px}
+.stage .lines div.me{border-left-color:var(--lamp)}
+.advice{border:1px dashed var(--lamp);border-radius:6px;padding:8px;font-size:.88rem;color:var(--ink)}
+.advice b{color:var(--lamp)}
+@keyframes pulse{0%{stroke-opacity:1}50%{stroke-opacity:.25}100%{stroke-opacity:1}}
+.hlring{animation:pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.hlring{animation:none}}
 </style>
 </head>
 <body>
 <div class="top">
-  <div style="display:flex;flex-direction:column"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.1</span></div>
+  <div style="display:flex;flex-direction:column"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.2</span></div>
   <div class="meta" id="meta"></div>
   <button id="newBtn" onclick="restart()">Новая партия</button>
   <div class="row" id="music">
@@ -320,7 +332,7 @@ function newGame(meId){
   S={map,me:meId,ids,night:0,wave:0,phase:"dusk",log:[],dossier:CONFIG.dossierStart,boons:[],evidence:[],offers:[],
      contacts:CONTACTS.map(c=>({...c,owner:null,used:false,blockUntil:0,statusGiven:[]})),
      edicts:shuffle(EDICTS),cases:shuffle(CASES),edict:null,case:null,
-     agents:[],raidAt:new Set(),flags:{},clans:{},plan:null,sel:null,result:null,sheriff:null,draft:null,init:rnd(3),gathered:false};
+     intro:0,mark:0,agents:[],raidAt:new Set(),flags:{},clans:{},plan:null,sel:null,result:null,sheriff:null,draft:null,init:rnd(3),gathered:false};
   for(const id of ids)contactAt(CLANS[id].start).owner=id;
   // убежище — рядом со стартовым контактом
   for(const id of ids){
@@ -406,8 +418,10 @@ function startNight(){
   const rolls=[];
   for(const id of S.ids){const c=S.clans[id];c.res=null;c.offered=false;c.domUsed=false;c.pos=c.haven;
     const v=d6();if(v<=3&&c.hunger<CONFIG.hungerMax){c.hunger++;rolls.push(`${clanSpan(id)} (${v})`)}}
-  log(`<b>Ночь ${S.night}.</b> Указ Князя: «${S.edict.title}». Городское дело: «${S.case.title}».${rolls.length?" Просыпаются голоднее: "+rolls.join(", ")+".":""}`);
-  beginWave();
+  if(rolls.length)log(`На закате просыпаются голоднее: ${rolls.join(", ")}.`,rolls.some(r=>r.includes(NM(S.me))));
+  S.briefLines=since(S.mark||0);
+  log(`<b>Ночь ${S.night}.</b> Указ Князя: «${S.edict.title}». Городское дело: «${S.case.title}».`);
+  S.phase=S.intro<INTRO.length?"intro":"brief";S.sel=null;S.plan=null;render();
 }
 function beginWave(){
   S.wave++;S.phase="plan";S.plan=null;S.sel=null;S.offers=S.offers.filter(o=>o.kind==="sheriff");
@@ -417,15 +431,11 @@ function beginWave(){
 function order(){const k=(S.init+S.wave+S.night)%S.ids.length;return S.ids.slice(k).concat(S.ids.slice(0,k))}
 function revealWave(){
   if(!S.plan||S.offers.length)return;
-  me().planned=S.plan;
+  me().planned=S.plan;const mark=S.log.length;
   const ord=order();
   log(`— Волна ${S.wave}. Очередь: ${ord.map(clanSpan).join(" → ")}.`);
   for(const id of ord){resolve(S.clans[id],S.clans[id].planned);if(S.dossier>=CONFIG.dossierMax)return endGame(true)}
-  // Князь-автома после волн
-  if(S.wave===1)offerSheriff();
-  if(S.wave===2&&(S.night%CONFIG.gatherEvery===0||S.dossier>=CONFIG.gatherDossier)){S.phase="gather";botAccusations();render();return}
-  if(S.wave>=CONFIG.waves){S.phase="dawnready";render();return}
-  beginWave();
+  S.sumLines=since(mark).slice(1);S.phase="summary";S.sel=null;render();
 }
 function agentCheck(c,d){
   if(!S.agents.includes(d))return;
@@ -633,6 +643,7 @@ function nextSheriff(){
    РАССВЕТ
    ===================================================================== */
 function dawn(){
+  S.mark=S.log.length;
   const cs=S.case;
   if(!S.caseDone.every(Boolean)){
     const half=S.caseDone.some(Boolean);let ex="";const f=cs.fail;if(f.k==="heat"){addHeat(f.d,1);ex=` Накал «${D(f.d).name}» +1.`}
@@ -871,6 +882,96 @@ function endGame(lost){
   log(`<b>Конец партии.</b> ${S.result}`,true);render();
 }
 
+
+/* =====================================================================
+   ПОЭТАПНЫЙ ВВОД: вступление, брифинг ночи, итоги волны, советы
+   ===================================================================== */
+function since(mark){return S.log.slice(0,Math.max(0,S.log.length-mark)).reverse()}
+function linesHtml(list){return list.length?`<div class="lines">${list.map(l=>`<div class="${l.mine?"me":""}">${l.t}</div>`).join("")}</div>`:'<span class="hint">Ничего заметного.</span>'}
+const INTRO=[
+ ()=>({title:"Город под облавой",hl:[...S.agents],html:`
+   <p>Неделю назад в сеть утекло видео: человек в подворотне пьёт кровь у бездомного. Ролик удалили за час, но <b>Вторая Инквизиция</b> — спецслужба, охотящаяся на вампиров, — успела его увидеть. В город прибыла оперативная группа.</p>
+   <ul><li><b>Досье Инквизиции</b> — общая шкала угрозы (сейчас ${S.dossier} из ${CONFIG.dossierMax}). Заполнится — город зачистят, и проиграют все, включая вас.</li>
+   <li>Досье растёт от <b>рейдов</b> (накал района дошёл до 3), от агентов, нашедших горячий район, и от нерешённых <b>городских дел</b>.</li>
+   <li>Два агента (✕ на карте, подсвечены) каждый рассвет делают шаг к самому горячему району.</li></ul>
+   <p class="hint">То есть вы соперничаете с другими кланами, но иногда придётся вместе тушить пожар.</p>`}),
+ ()=>{const c=me(),cl=CLANS[c.id],ct=S.contacts.find(x=>x.owner===c.id);return {title:`Вы — клан ${cl.name}`,hl:[c.haven,ct.d],html:`
+   <p>Ваша фишка — с белой обводкой. Каждую ночь вы выходите из <b>убежища</b> (⌂, «${D(c.haven).name}»).</p>
+   <ul><li><b>Дисциплины:</b> ${cl.disc.join(", ")}. Ими действуют, когда идут напролом.</li>
+   <li><b>Особенность клана:</b> ${cl.ability}</li>
+   <li><b>Тип хищника — ${cl.predator}:</b> ${cl.predText}. Там охота не поднимает накал.</li>
+   <li><b>Ваш первый контакт:</b> ${ct.name}, ${ct.role} («${D(ct.d).name}», тип ${ct.type}). Свой контакт выполняет условия замыслов без бросков.</li></ul>
+   <p class="hint">Шкалы: Голод (0–4) — чем выше, тем больше красных кубиков и риска; Человечность (1–5) — падает от грубых методов; Статус (0–5) — положение при дворе, идёт в очки.</p>`}},
+ ()=>{const c=me(),p=c.plots[0];return {title:"Ваш замысел",hl:p.conds.map(x=>x.d),html:`
+   <p><b>«${p.title}»</b> — ${p.text} Награда: <b>${p.big?CONFIG.bigVP:CONFIG.smallVP} ПО</b>.</p>
+   <p>Нужно выполнить ${p.conds.length} условия в любом порядке. Каждое привязано к району (подсвечены):</p>
+   <ul>${p.conds.map(x=>{const ct=contactAt(x.d);return `<li><b>${x.t}</b> — «${D(x.d).name}». Путь 1: контакт этого района, ${ct.name} (${ct.owner===S.me?"он ваш — просто задействуйте":ct.owner?"он у клана "+NM(ct.owner)+", можно попросить за долг":"он ничей — сначала наладьте с ним связь"}). Путь 2: грубая сила (${x.disc||bestDisc(c)}) — быстро, но оставляет след, накал и стоит Человечности.</li>`}).join("")}</ul>
+   <p class="hint">Запасной замысел — «${c.plots[1]?c.plots[1].title:"—"}». Он станет активным, когда вы закончите этот. Очки: замыслы + Статус + долги, которые должны вам, − ваши долги.</p>`}},
+ ()=>{const others=S.ids.filter(i=>i!==S.me);return {title:"Соперники и Князь",hl:others.map(i=>S.clans[i].pos),html:`
+   <p>Против вас играют ${others.map(clanSpan).join(" и ")}. Их замыслы скрыты, но видно, куда они ходят и что просят.</p>
+   <ul><li><b>Боны (долги).</b> Чужим контактом можно воспользоваться с согласия владельца — тогда вы должны ему услугу. Соперники будут предлагать то же самое вам. Долги в конце дают ±1 очко.</li>
+   <li><b>Следы.</b> Грубые действия оставляют скрытые следы (?N на карте). Кто расследует район, превращает чужой след в доказательство — и может шантажировать, разоблачить или обвинить на сборе.</li>
+   <li><b>Князь</b> ходит сам: каждую ночь объявляет указ, может вручить значок Шерифа и созвать Общий сбор, где выносят приговоры.</li></ul>`}},
+ ()=>({title:"Как проходит ночь",hl:[me().pos],html:`
+   <ul><li>Ночь — <b>3 волны</b>. В каждую волну у вас одно действие.</li>
+   <li>Нажмите на район (ваш или соседний), выберите действие справа и нажмите <b>«Раскрыть волну»</b>. Соперники ходят одновременно, потом всё разрешается по очереди.</li>
+   <li>Кнопка «Перейти» двигает фишку на 2 района. Контакт можно задействовать издалека — до 2 районов.</li>
+   <li>Перед волной соперники могут обратиться к вам с предложением — ответьте, и только потом раскрывайте.</li>
+   <li>В карточке хода всегда есть <b>совет</b>, что разумно сделать сейчас, а нужный район подсвечен на карте.</li></ul>
+   <p class="hint">Всего 6 ночей. Перед каждой ночью покажу, что случилось и что изменилось.</p>`}),
+];
+function introNav(d){S.intro=clamp(S.intro+d,0,INTRO.length);if(S.intro>=INTRO.length)S.phase="brief";render()}
+function skipIntro(){S.intro=INTRO.length;S.phase="brief";render()}
+function introCard(){
+  const st=INTRO[S.intro]();
+  return `<div class="card stage"><span class="step">Вступление · ${S.intro+1} из ${INTRO.length}</span><h2>${st.title}</h2>${st.html}
+    <div class="row">${S.intro>0?`<button onclick="introNav(-1)">Назад</button>`:""}<button class="primary" onclick="introNav(1)">${S.intro===INTRO.length-1?"К первой ночи":"Дальше"}</button><button onclick="skipIntro()">Пропустить</button></div></div>`;
+}
+function briefCard(){
+  const c=me();const cs=S.case;
+  const ed={curfew:"охотьтесь по своему типу хищника, иначе накал растёт вдвое",amnesty:"хороший момент заметать свои следы",inquiry:"расследования в Редакции и Мэрии проще",sheriff:"значок Шерифа сегодня ценнее",witness:"первое разоблачение пройдёт тихо",portctl:"в Порту и на Вокзале грубость обходится дороже",debts:"выгодно потребовать долг",protocol:"закрытое дело снимет вдвое больше досье",watch:"расследуя в Мэрии и Больнице, можно наследить",silence:"остудите район с накалом 2 — получите Статус"}[S.edict.id]||"";
+  return `<div class="card stage"><span class="step">Ночь ${S.night} из ${CONFIG.nights}</span><h2>${S.night===1?"Первая ночь":"Наступает ночь"}</h2>
+    ${S.night>1?`<h3>Пока вы спали</h3>${linesHtml(S.briefLines||[])}`:""}
+    <h3>Указ Князя: ${S.edict.title}</h3><p>${S.edict.text}${ed?` <span class="hint">Что это значит: ${ed}.</span>`:""}</p>
+    <h3>Городское дело: ${cs.title}</h3><p>${cs.text} Нужно два вклада — их может сделать кто угодно, в том числе вы:</p>
+    <ul>${cs.parts.map(p=>`<li><b>${p.t}</b>: контакт «${contactAt(p.d).name}» (${D(p.d).name}) или ${({check:"проверка",cover:"«Замести следы»",invest:"«Расследовать»"})[p.alt.k]} в «${D(p.alt.d).name}».</li>`).join("")}</ul>
+    <p class="hint">Закроете — досье −1 и +1 Статус тому, кто сделает последний вклад. Не закроет никто — досье +1.</p>
+    <h3>Вы</h3><p>Голод ${c.hunger}/${CONFIG.hungerMax}${c.hunger>=3?" — высокий: начните ночь с охоты":""}. Статус ${c.status}. Активный замысел — «${c.plots[0]?c.plots[0].title:"—"}» (${c.plots[0]?c.plots[0].conds.filter(x=>x.ok).length+" из "+c.plots[0].conds.length+" условий":""}).</p>
+    <div class="row"><button class="primary" onclick="beginWave()">Начать ночь</button></div></div>`;
+}
+function summaryCard(){
+  const next=S.dossier>=CONFIG.dossierMax?"":S.wave===2&&willGather()?"На Общий сбор":S.wave>=CONFIG.waves?"К рассвету":"К следующей волне";
+  return `<div class="card stage"><span class="step">Ночь ${S.night} · итоги волны ${S.wave} из ${CONFIG.waves}</span><h2>Что произошло</h2>
+    ${linesHtml(S.sumLines||[])}
+    <div class="row"><button class="primary" onclick="continueWave()">${next}</button></div></div>`;
+}
+function willGather(){return S.night%CONFIG.gatherEvery===0||S.dossier>=CONFIG.gatherDossier}
+function continueWave(){
+  if(S.wave===1)offerSheriff();
+  if(S.wave===2&&willGather()){S.phase="gather";botAccusations();render();return}
+  if(S.wave>=CONFIG.waves){S.phase="dawnready";render();return}
+  beginWave();
+}
+// совет: что разумно сделать сейчас
+function advice(){
+  const c=me();const r1=within(c.pos,1,c.id),rC=d=>dist(c.pos,d,c.id)<=CONFIG.contactRange;
+  if(S.offers.length)return {t:"Сначала ответьте на предложение соперника выше: от вашего ответа зависит их ход."};
+  if(c.hunger>=3){const safe=r1.filter(d=>D(d).herd>0&&safeHunt(c,d));const any=r1.filter(d=>D(d).herd>0);
+    const d=safe[0]||any[0];if(d)return {t:`Голод ${c.hunger}: красные кубики начнут портить проверки. Поохотьтесь в «${D(d).name}»${safe[0]?" — там тихо для вашего хищника":""}.`,d};}
+  for(const {x} of openConds(c)){
+    const ct=contactAt(x.d);
+    if(ct.owner===c.id&&ctAvail(ct)&&rC(x.d))return {t:`Условие «${x.t}» закрывается вашим контактом ${ct.name} без проверки. Нажмите «${D(x.d).name}» → «Замысел: ${x.t}».`,d:x.d};
+    if(ct.owner&&ct.owner!==c.id&&ctAvail(ct)&&rC(x.d)){const ag=botAgrees(ct.owner,ct);if(ag.ok)return {t:`Контакт ${ct.name} у клана ${NM(ct.owner)}. Они согласны помочь ${ag.why} — выберите «${D(x.d).name}» → «Замысел: ${x.t}».`,d:x.d}}
+    if(!ct.owner&&r1.includes(x.d))return {t:`${ct.name} в «${D(x.d).name}» ничей. Наладьте связь (проверка), и следующим действием он закроет условие «${x.t}». Или идите напролом грубой силой — быстрее, но со следом.`,d:x.d};
+    if(!r1.includes(x.d)&&!rC(x.d))return {t:`Условие «${x.t}» — в «${D(x.d).name}», это далеко. Сделайте «Перейти» в его сторону.`,d:stepToward(c.pos,x.d,c.id,2)};
+    if(r1.includes(x.d))return {t:`Для «${x.t}» нет свободного контакта. Можно грубой силой в «${D(x.d).name}» или сначала заняться чем-то ещё.`,d:x.d};
+  }
+  const left=S.case.parts.map((p,i)=>({p,i})).filter(o=>!S.caseDone[o.i]);
+  for(const {p} of left)if(r1.includes(p.alt.d))return {t:`Рядом городское дело: «${p.t}» в «${D(p.alt.d).name}». Закрытое дело уменьшает досье и даёт Статус.`,d:p.alt.d};
+  const tr=r1.find(d=>D(d).traces.some(t=>t.clan!==c.id));if(tr)return {t:`В «${D(tr).name}» есть чужие следы. Расследуйте — получите доказательство для шантажа.`,d:tr};
+  const hot=r1.find(d=>D(d).heat>=2);if(hot)return {t:`«${D(hot).name}» на грани рейда (накал ${D(hot).heat}). Заметите следы — меньше шансов, что досье вырастет.`,d:hot};
+  return {t:"Срочного нет: наладьте новую связь, поохотьтесь за резонансом или двигайтесь к следующей цели."};
+}
 /* =====================================================================
    ОТРИСОВКА
    ===================================================================== */
@@ -899,6 +1000,8 @@ function renderBoard(){
       ${caseD.has(k)?`<rect x="${x+4}" y="${y+35}" width="6" height="6" fill="#7fc4d8"><title>городское дело</title></rect>`:""}
     </g>`;
   }
+  {let hl=[];if(S.phase==="intro")hl=INTRO[S.intro]().hl||[];else if(S.phase==="brief")hl=S.case.parts.flatMap(p=>[p.d,p.alt.d]);else if(S.phase==="plan"&&!S.sel){const a=advice();if(a.d)hl=[a.d]}
+   for(const k of new Set(hl)){const [x,y]=px(D(k));s+=`<path class="hlring" d="${hexPath(x,y,.82)}" fill="none" stroke="var(--lamp)" stroke-width="4"/>`}}
   for(const a of S.agents){const [x,y]=px(D(a));s+=`<text x="${x+28}" y="${y-30}" text-anchor="middle" font-size="15" font-weight="700" fill="#ff6b78">✕</text>`}
   {const [x,y]=px(D(c.haven));s+=`<text x="${x-28}" y="${y-30}" text-anchor="middle" font-size="13" fill="${CLANS[c.id].color}">⌂</text>`}
   const groups={};for(const id of S.ids){(groups[S.clans[id].pos]??=[]).push(id)}
@@ -980,6 +1083,7 @@ function planCard(){
   if(S.offers.length){
     html+=`<p class="hint">Пока все тайно выбирают действия, к вам обращаются:</p>`+S.offers.map(o=>`<div class="offer"><span>${o.text}</span><div class="row"><button class="primary" onclick="answerOffer(${o.uid},true)">${o.yes}</button><button onclick="answerOffer(${o.uid},false)">${o.no}</button></div></div>`).join("");
   }
+  {const a=advice();html+=`<div class="advice"><b>Совет:</b> ${a.t}${a.d&&S.sel!==a.d?` <button onclick="selectDistrict('${a.d}')">Открыть «${D(a.d).name}»</button>`:""}</div>`}
   if(!S.sel){html+=`<p class="sel-note">Выберите район на карте. Сплошная рамка — можно действовать (ваш или соседний), пунктир — «Перейти» или контакт издалека. ● — нужно для замысла, ■ — городское дело.</p>
     <div class="row"><button onclick="selectDistrict(me().pos)">Действовать здесь, в «${D(c.pos).name}»</button></div>`}
   else{
@@ -1028,6 +1132,9 @@ function render(){
       <div class="col" id="side"></div></div>`;
   }
   renderBoard();
+  if(S.phase==="intro"){$("#side").innerHTML=introCard()+rulesCard();return}
+  if(S.phase==="brief"){$("#side").innerHTML=briefCard()+myCard()+rivalsCard()+rulesCard();return}
+  if(S.phase==="summary"){$("#side").innerHTML=summaryCard()+cityCard()+myCard()+rivalsCard()+logCard()+rulesCard();return}
   $("#side").innerHTML=planCard()+cityCard()+myCard()+rivalsCard()+logCard()+rulesCard();
 }
 render();
