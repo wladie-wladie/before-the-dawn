@@ -95,6 +95,13 @@ button.act small{color:var(--dim);font-size:.78rem}
   <div style="display:flex;flex-direction:column"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.1</span></div>
   <div class="meta" id="meta"></div>
   <button id="newBtn" onclick="restart()">Новая партия</button>
+  <div class="row" id="music">
+    <button id="ambBtn">Эмбиент: выкл</button>
+    <label for="trackIn" class="tag" style="cursor:pointer;align-items:center">Свой трек…</label>
+    <input type="file" id="trackIn" accept="audio/*" hidden>
+    <button id="trackBtn" hidden>Трек: пауза</button>
+    <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" aria-label="Громкость" style="width:90px">
+  </div>
   <button id="installBtn" hidden>Установить приложение</button>
 </div>
 <div id="app"></div>
@@ -1024,6 +1031,69 @@ function render(){
   $("#side").innerHTML=planCard()+cityCard()+myCard()+rivalsCard()+logCard()+rulesCard();
 }
 render();
+/* ---------- музыка: свой файл или генерируемый эмбиент ---------- */
+const audioEl=new Audio();audioEl.loop=true;
+let AC=null,ambGain=null,ambOn=false,ambNodes=[],ambTimers=[];
+function vol(){return +$("#vol").value}
+// Импульс реверберации: длинный мягкий хвост «большого зала»
+function makeImpulse(sec){const len=AC.sampleRate*sec;const b=AC.createBuffer(2,len,AC.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);let last=0;for(let i=0;i<len;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=last*3*Math.pow(1-i/len,2.5)}}return b}
+function startAmbient(){
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(AC.state==="suspended")AC.resume();
+  const t0=AC.currentTime;
+  ambGain=AC.createGain();ambGain.gain.value=0;
+  const comp=AC.createDynamicsCompressor();comp.threshold.value=-24;comp.ratio.value=3;
+  ambGain.connect(comp);comp.connect(AC.destination);
+  ambGain.gain.linearRampToValueAtTime(vol()*0.6,t0+6);
+  // общая шина: мягкий фильтр + реверберация
+  const bus=AC.createBiquadFilter();bus.type="lowpass";bus.frequency.value=900;bus.Q.value=0.3;
+  const rev=AC.createConvolver();rev.buffer=makeImpulse(6);
+  const dry=AC.createGain();dry.gain.value=0.45;const wet=AC.createGain();wet.gain.value=0.8;
+  bus.connect(dry);dry.connect(ambGain);bus.connect(rev);rev.connect(wet);wet.connect(ambGain);
+  // пэд: чистые синусы и треугольники с лёгкой расстройкой, плавно перетекающие между аккордами
+  const CHORDS=[[55,82.41,110,130.81],[43.65,87.31,110,130.81],[49,73.42,98,146.83],[41.2,82.41,123.47,98]];
+  const voices=CHORDS[0].map((f,i)=>{
+    const pair=[-3,3].map(cents=>{const o=AC.createOscillator();o.type=i===0?"sine":"triangle";o.frequency.value=f;o.detune.value=cents;return o});
+    const g=AC.createGain();g.gain.value=[0.22,0.12,0.08,0.05][i];
+    const pan=AC.createStereoPanner?AC.createStereoPanner():null;
+    pair.forEach(o=>{o.connect(g);o.start();ambNodes.push(o)});
+    if(pan){pan.pan.value=[0,-0.35,0.35,0][i];g.connect(pan);pan.connect(bus)}else g.connect(bus);
+    // медленное «дыхание» громкости голоса
+    const lfo=AC.createOscillator();lfo.frequency.value=0.03+i*0.013;const lg=AC.createGain();lg.gain.value=g.gain.value*0.4;
+    lfo.connect(lg);lg.connect(g.gain);lfo.start();ambNodes.push(lfo);
+    return pair;
+  });
+  let ci=0;
+  const nextChord=()=>{if(!ambOn)return;ci=(ci+1)%CHORDS.length;const t=AC.currentTime;
+    voices.forEach((pair,i)=>pair.forEach(o=>o.frequency.setTargetAtTime(CHORDS[ci][i],t,4)));
+    ambTimers.push(setTimeout(nextChord,22000))};
+  ambTimers.push(setTimeout(nextChord,22000));
+  // мягкий «коричневый» шум города без слышимого стыка петли
+  const len=AC.sampleRate*12;const nb=AC.createBuffer(2,len,AC.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=nb.getChannelData(ch);let last=0;for(let i=0;i<len;i++){last=(last+0.02*(Math.random()*2-1))/1.02;d[i]=last*3}
+    const fade=AC.sampleRate*2;for(let i=0;i<fade;i++){const k=i/fade;d[i]=d[i]*k+d[len-fade+i]*(1-k)}}
+  const ns=AC.createBufferSource();ns.buffer=nb;ns.loop=true;ns.loopStart=0;ns.loopEnd=12-2;
+  const nf=AC.createBiquadFilter();nf.type="lowpass";nf.frequency.value=250;
+  const ng=AC.createGain();ng.gain.value=0.09;ns.connect(nf);nf.connect(ng);ng.connect(ambGain);ns.start();ambNodes.push(ns);
+  // редкие мягкие низкие ноты, утопающие в реверберации
+  const notes=[110,130.81,146.83,164.81,98,123.47];
+  const bell=()=>{if(!ambOn)return;const t=AC.currentTime;const f=pick(notes);
+    [1,2.01].forEach((m,j)=>{const o=AC.createOscillator();o.type="sine";o.frequency.value=f*m;
+      const g=AC.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(j?0.015:0.06,t+2.5);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+12);o.connect(g);g.connect(rev);g.connect(bus);o.start(t);o.stop(t+12.5)});
+    ambTimers.push(setTimeout(bell,9000+Math.random()*12000))};
+  ambTimers.push(setTimeout(bell,5000));
+}
+function stopAmbient(){if(!AC)return;const t=AC.currentTime;ambTimers.forEach(clearTimeout);ambTimers=[];
+  const g=ambGain;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+3);
+  const nodes=ambNodes;ambNodes=[];setTimeout(()=>{nodes.forEach(n=>{try{n.stop()}catch(e){}});try{g.disconnect()}catch(e){}},3200)}
+$("#ambBtn").onclick=()=>{ambOn=!ambOn;if(ambOn){audioEl.pause();$("#trackBtn").textContent="Трек: играть";startAmbient()}else stopAmbient();$("#ambBtn").textContent="Эмбиент: "+(ambOn?"вкл":"выкл");$("#ambBtn").classList.toggle("on",ambOn)};
+$("#trackIn").onchange=e=>{const f=e.target.files[0];if(!f)return;if(audioEl.src)URL.revokeObjectURL(audioEl.src);
+  audioEl.src=URL.createObjectURL(f);audioEl.volume=vol();if(ambOn)$("#ambBtn").click();
+  audioEl.play().then(()=>{$("#trackBtn").hidden=false;$("#trackBtn").textContent="Трек: пауза"}).catch(()=>{$("#trackBtn").hidden=false;$("#trackBtn").textContent="Трек: играть"})};
+$("#trackBtn").onclick=()=>{if(audioEl.paused){audioEl.play();$("#trackBtn").textContent="Трек: пауза"}else{audioEl.pause();$("#trackBtn").textContent="Трек: играть"}};
+$("#vol").oninput=()=>{audioEl.volume=vol();if(ambOn&&AC)ambGain.gain.setTargetAtTime(vol()*0.6,AC.currentTime,0.3)};
 // --- PWA: офлайн и установка ---
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 let deferredInstall=null;
