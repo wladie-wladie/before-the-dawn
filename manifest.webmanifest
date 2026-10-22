@@ -1,0 +1,17 @@
+{
+  "name": "Before the Dawn",
+  "short_name": "Before the Dawn",
+  "description": "Неофициальная фан-игра по Vampire: The Masquerade",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#11131b",
+  "theme_color": "#11131b",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
