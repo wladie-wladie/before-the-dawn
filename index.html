@@ -1475,10 +1475,11 @@ function clickHex(k){
   if(G.ritualMode){if(G.seen.has(k)){ritualAt(k)}return}
   if(G.phase!=="walk"||G.enc||G.pick)return;
   if(k===G.pos||!G.seen.has(k)){G.sel=k;render();return}
-  const p=bfs(G.pos,k);if(!p)return;G.homeRun=false;const walking=G.path.length>0;G.path=p;if(!walking)walkStep()}
-function goHome(){const p=bfs(G.pos,G.haven,true);if(p&&p.length){const walking=G.path.length>0;G.path=p;G.homeRun=true;if(!walking)walkStep()}}
-function walkStep(){
-  if(!G.path.length||G.enc||G.phase!=="walk"){render();return}
+  const p=bfs(G.pos,k);if(!p)return;G.homeRun=false;G.path=p;kickWalk()}
+let walkT=null;function kickWalk(){if(walkT){clearTimeout(walkT);walkT=null}walkStep()}
+function goHome(){G.alert=null;if(G.enc&&(G.enc.res||G.enc.kind!=="meet"))G.enc=null;G.pick=null;const p=bfs(G.pos,G.haven,true);if(p&&p.length){G.path=p;G.homeRun=true;kickWalk()}else render()}
+function walkStep(){walkT=null;
+  if(!G.path.length||G.enc||G.phase!=="walk"){G.path=[];G.homeRun=false;render();return}
   const k=G.path.shift();if(G.time>=CONFIG.nightEnd){G.path=[];dawn();return}
   G.pos=k;advance(1);if(G.phase!=="walk"){render();return}
   dawnWarnCheck();if(G.alert)G.path=[];
@@ -1491,7 +1492,7 @@ function walkStep(){
   if(G.time===CONFIG.nightEnd-2)addLog("<b>Небо на востоке сереет.</b> Час до рассвета.");
   if(G.alert){render();return}
   if(G.time>=CONFIG.nightEnd){G.path=[];render();setTimeout(dawn,400);return}
-  render();if(G.path.length)setTimeout(walkStep,reduceMotion()?40:(hr?200:340));else G.homeRun=false}
+  render();if(G.path.length)walkT=setTimeout(walkStep,reduceMotion()?40:(hr?200:340));else G.homeRun=false}
 function spend(n){advance(n);if(G.time>=CONFIG.nightEnd&&G.phase==="walk"){dawn();return true}dawnWarnCheck();return false}
 
 /* ---------- действия в районе ---------- */
