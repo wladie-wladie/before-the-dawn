@@ -179,11 +179,73 @@ body.su-open{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.su-card,.su-big{transition:none}}
 
 
+
+/* ---- Элизиум: полноэкранный сбор ---- */
+#court{position:fixed;inset:0;z-index:38;overflow:auto;background:radial-gradient(1100px 600px at 50% -5%,#2b1a12 0%,#140e12 50%,#0a0a10 100%);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body.ct-open{overflow:hidden}
+.ct-in{max-width:1180px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px}
+.ct-top{border:1px solid #5a4630;border-radius:14px;padding:22px 24px;background:linear-gradient(180deg,rgba(60,40,24,.35),rgba(20,14,18,.6));box-shadow:inset 0 0 60px rgba(0,0,0,.4)}
+.ct-top h1{font-size:clamp(1.6rem,4vw,2.6rem);margin:6px 0 8px;color:#f0e2c4}
+.ct-why{font-size:1.08rem;color:#d8ccb4;max-width:80ch;margin:0 0 10px;font-style:italic}
+.ct-meta{color:#bdb3a2;margin:0 0 12px}
+.ct-order{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ord{font-family:var(--f-mono);font-size:.74rem;padding:3px 8px;border-radius:999px;border:1px solid color-mix(in srgb,var(--cc) 50%,transparent);color:var(--cc)}
+.ord i{font-style:normal;opacity:.7}.ord.past{opacity:.45}.ord.now{background:color-mix(in srgb,var(--cc) 22%,transparent);box-shadow:0 0 0 2px var(--cc)}
+.ct-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.slot{min-height:260px;border:1.5px dashed #5d5160;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,.02);position:relative;transition:border-color .2s,box-shadow .2s}
+.slot.who{border-color:#7a3a40}
+.slot.full{border-style:solid;border-color:#8c7550;background:linear-gradient(180deg,rgba(217,164,65,.10),rgba(0,0,0,.15))}
+.slot.can{border-color:var(--lamp);box-shadow:0 0 0 2px rgba(217,164,65,.35),0 0 24px rgba(217,164,65,.2)}
+.sl-h{display:flex;justify-content:space-between;gap:6px;align-items:flex-start}
+.sl-l{font-family:var(--f-display);font-size:1.02rem;color:#eee2cc;line-height:1.15}
+.sl-k{font-size:.9rem;color:var(--dim);white-space:nowrap}
+.sl-who{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:#e0727c}
+.sl-card{flex:1;display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:8px;background:#1d1720;border:1px solid #4a3d30}
+.sl-card b{font-size:1rem;color:#f3e7cf}.sl-card .ki{font-size:1.4rem;color:var(--lamp)}
+.sl-by{margin-top:auto;font-size:.78rem;color:var(--dim)}
+.sl-rum{flex:1;padding:10px;border-radius:8px;border:1px solid #3b3442;background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 6px,transparent 6px 12px)}
+.sl-rum p{margin:6px 0 0;color:#b9b0c0;font-style:italic}
+.sl-empty{flex:1;display:grid;place-items:center;color:#5f5866;font-family:var(--f-mono);font-size:.8rem;letter-spacing:.14em;text-transform:uppercase}
+.sl-a{display:flex;flex-direction:column;gap:6px}.sl-a button{width:100%}
+.ct-log{border-left:2px solid #5a4630;padding:4px 14px;color:#c9bfae;max-height:220px;overflow:auto}
+.ct-log p{margin:4px 0}
+.ct-act{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:rgba(10,10,16,.6);display:flex;flex-direction:column;gap:10px}
+.ct-act p{margin:0}
+.ct-res{border-color:#8c7550;background:linear-gradient(180deg,rgba(60,40,24,.4),rgba(12,10,14,.8))}
+.ct-res p{font-size:1.04rem;line-height:1.55}
+.ct-wait{font-family:var(--f-display);font-size:1.5rem;color:#f0d79a;font-weight:700}
+.ct-hand{display:flex;gap:10px;overflow-x:auto;padding:10px 2px;position:sticky;bottom:0;z-index:2;background:linear-gradient(0deg,#0b0a0f 70%,rgba(11,10,15,0))}
+.ct-act>button{align-self:flex-start}
+.hc{flex:0 0 170px;text-align:left;display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#16131b;color:var(--ink);cursor:pointer}
+.hc .ki{font-size:1.2rem;color:var(--lamp)}.hc.on{border-color:var(--lamp);box-shadow:0 0 0 2px rgba(217,164,65,.45);transform:translateY(-4px)}
+@media (max-width:640px){.ct-slots{grid-template-columns:repeat(2,1fr)}.slot{min-height:200px}.ct-top{padding:16px}}
+/* ---- рассвет: часы, предупреждение, сцена ---- */
+.hud.warn .clock .big{color:#ffb35c}
+.hud.crit .clock .big{color:#ff5a4a;animation:dawnPulse 1s ease-in-out infinite}
+.hud.warn .homeway,.hud.crit .homeway{color:#ffb35c}
+.hud.crit .sky span{background:linear-gradient(90deg,#ff9b4a,#ff3b2f)!important}
+@keyframes dawnPulse{50%{opacity:.35;text-shadow:0 0 18px #ff5a4a}}
+#ovl{position:fixed;inset:0;z-index:60}
+.dawn-alert{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(10,6,8,.55);backdrop-filter:blur(2px)}
+.dawn-alert.lvl2{background:radial-gradient(900px 500px at 50% 120%,rgba(255,110,40,.45),rgba(10,6,8,.75))}
+.da-box{max-width:460px;border-radius:14px;padding:22px;border:1px solid #a0642c;background:#1a1012;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lvl2 .da-box{border-color:#ff5a3a;box-shadow:0 0 0 2px rgba(255,90,58,.5),0 20px 60px rgba(0,0,0,.6)}
+.da-box h2{font-size:1.6rem;margin:6px 0 8px;color:#ffcf8a}.lvl2 .da-box h2{color:#ff8a6a}
+.sun-scene{position:absolute;inset:0;display:grid;place-items:center;padding:16px;overflow:hidden;background:#fff3d6;animation:sunIn 1.6s ease-out}
+.sun-glow{position:absolute;inset:-20%;background:radial-gradient(circle at 50% 110%,#fff 0%,#ffd27a 25%,#ff8a3c 50%,#7a1f14 80%,#1a0606 100%);animation:sunRise 3s ease-out forwards}
+.sun-scene.death .sun-glow{background:radial-gradient(circle at 50% 105%,#fff 0%,#ffe2a0 30%,#ff9a50 55%,#c2401c 80%,#3a0a06 100%)}
+.sun-scene.meld .sun-glow{background:radial-gradient(circle at 50% 110%,#ffd27a 0%,#a2622c 35%,#3a2412 65%,#0e0a06 100%)}
+.sun-box{position:relative;max-width:560px;text-align:center;padding:26px;border-radius:16px;background:rgba(20,8,6,.72);border:1px solid rgba(255,200,140,.5);color:#fbe9d2}
+.sun-box h1{font-size:clamp(2rem,6vw,3.2rem);color:#fff1d8;margin:8px 0 12px;text-shadow:0 0 30px rgba(255,160,80,.8)}
+.sun-box p{font-size:1.08rem;line-height:1.55}.sun-box .eyebrow{color:#ffcf8a}
+@keyframes sunIn{from{background:#000}}
+@keyframes sunRise{from{transform:translateY(40%);opacity:.2}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sun-scene,.sun-glow,.hud.crit .clock .big{animation:none}}
 </style>
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v1.0 «Дела Князя»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v1.2 «Дела Князя»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -201,6 +263,8 @@ body.su-open{overflow:hidden}
   <div class="col" id="side"></div>
 </div>
 <div id="setup" hidden></div>
+<div id="court" hidden></div>
+<div id="ovl" hidden></div>
 <footer class="hint"><a href="v09.html" style="color:var(--dim)">Прошлая версия v0.9 «Город»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
@@ -1229,24 +1293,24 @@ function freeCells(){const C=G.case;if(!C)return [];return tplOf(C).cells.filter
 function fits(card,cell){return cell.k.includes(card.k)}
 function casePlace(a,cellId,cardId){const C=G.case,cell=tplOf(C).cells.find(c=>c.id===cellId);const card=a.hand.find(c=>c.id===cardId);
   if(!card||C.cells[cellId]||!fits(card,cell))return false;a.hand=a.hand.filter(c=>c!==card);C.cells[cellId]={card,by:a.id};a.placed=(a.placed||0)+1;
-  addLog(`<b>${Who(a)}</b> кладёт в «${cell.l}»: ${card.name} (${cardTags(card)}).`);return true}
+  addLog(`<b>${Who(a)}</b> ${a.id==="me"?"кладёте":"кладёт"} в «${cell.l}»: ${card.name} (${cardTags(card)}).`);return true}
 function caseRefute(a,cellId,cardId){const C=G.case,cell=tplOf(C).cells.find(c=>c.id===cellId);const L=leader(cell);const card=a.hand.find(c=>c.id===cardId);
   if(!card||!L||C.cells[cellId])return false;const val=cell.key==="clan"?card.clan:card.d;if(val===L.key)return false;
   for(const r of L.rs)C.refuted.push(r.id);a.hand=a.hand.filter(c=>c!==card);C.alibis.push({card,by:a.id,cell:cellId});
-  addLog(`<b>${Who(a)}</b> оспаривает слух в «${cell.l}»: ${card.name}. Слух больше не в счёт.`);return true}
+  addLog(`<b>${Who(a)}</b> ${a.id==="me"?"оспариваете":"оспаривает"} слух в «${cell.l}»: ${card.name}. Слух больше не в счёт.`);return true}
 function accusedBy(a){const C=G.case;if(!C)return null;const w=tplOf(C).cells.find(c=>c.who);const v=C.cells[w.id];return v&&v.card.clan===a.clan&&v.by!==a.id?v:null}
 function caseAlibi(a,cardId){const C=G.case,v=accusedBy(a);const card=a.hand.find(c=>c.id===cardId&&c.clan===a.clan);if(!v||!card)return false;
   const w=tplOf(C).cells.find(c=>c.who);delete C.cells[w.id];a.hand=a.hand.filter(c=>c!==card);C.alibis.push({card,by:a.id,cell:w.id});
   const acc=actorById(v.by);if(acc){acc.status=clamp(acc.status-2,0,10)}
-  addLog(`<b>${Who(a)}</b> опровергает обвинение: ${card.name}. ${acc?`${Who(acc)} теряет 2 Статуса за клевету при дворе.`:""}`);return true}
+  addLog(`<b>${Who(a)}</b> ${a.id==="me"?"опровергаете":"опровергает"} обвинение: ${card.name}. ${acc?`${Who(acc)} ${acc.id==="me"?"теряете":"теряет"} 2 Статуса за клевету при дворе.`:""}`);return true}
 function exposeTargets(a){const tr=a.hand.filter(c=>c.trace&&c.trace.fac==="ana");const by={};for(const c of tr)(by[c.clan]=by[c.clan]||[]).push(c);
   return Object.entries(by).filter(([cl,cs])=>cs.length>=2&&cl!==a.clan&&actorOfClan(cl)).map(([cl])=>cl)}
 function doExpose(a,clan){const tr=a.hand.filter(c=>c.trace&&c.trace.fac==="ana"&&c.clan===clan).slice(0,2);a.hand=a.hand.filter(c=>!tr.includes(c));
   const t=actorOfClan(clan);
   if(t&&t.fac==="ana"&&!t.exposed){t.exposed=true;t.status=clamp(t.status-3,0,10);a.status=clamp(a.status+2,0,10);a.exposedSomeone=true;
-    addLog(`<b>Разоблачение.</b> ${Who(a)} выкладывает перед двором следы: клан ${CLANS[clan].name} тайно работал на анархов. ${t.id==="me"?"Вас":"Его"} больше не защищает двор. Статус −3.`);
+    addLog(`<b>Разоблачение.</b> ${Who(a)} ${a.id==="me"?"выкладываете":"выкладывает"} перед двором следы: клан ${CLANS[clan].name} тайно работал на анархов. ${t.id==="me"?"Вас":"Его"} больше не защищает двор. Статус −3.`);
     if(G.sheriff===t.id)G.sheriff=null;return true}
-  a.status=clamp(a.status-2,0,10);addLog(`<b>Ложное обвинение.</b> ${Who(a)} обвиняет клан ${CLANS[clan].name} в работе на анархов, но двор не верит. Статус −2.`);return false}
+  a.status=clamp(a.status-2,0,10);addLog(`<b>Ложное обвинение.</b> ${Who(a)} ${a.id==="me"?"обвиняете":"обвиняет"} клан ${CLANS[clan].name} в работе на анархов, но двор не верит. Статус −2.`);return false}
 function needSheriff(att){const list=att.filter(a=>!a.exposed).sort((x,y)=>y.status-x.status||Math.random()-.5);if(!list.length)return;
   const cur=G.sheriff&&actorById(G.sheriff);if(!cur||!cur.alive||cur.exposed||list[0].status>=cur.status+2&&list[0]!==cur){G.sheriff=list[0].id;addLog(`<b>Шериф:</b> ${list[0].id==="me"?"Князь назначает Шерифом вас":`Князь назначает Шерифом клан ${CLANS[list[0].clan].name}`}.`)}}
 function sheriffRewrite(a,cellId,cardId){const C=G.case,cell=tplOf(C).cells.find(c=>c.id===cellId);const card=a.hand.find(c=>c.id===cardId);
@@ -1337,7 +1401,7 @@ function botCourtTurn(b,lines){
   const ex=exposeTargets(b);if(ex.length&&Math.random()<.7){doExpose(b,pick(ex));lines.push(G.log[0].t);return}
   const w=wantsPlace(b);if(w&&Math.random()<.85){casePlace(b,w.cell.id,w.card.id);lines.push(G.log[0].t);return}
   const wc=freeCells().find(c=>c.who);if(wc){const L=leader(wc);if(L&&L.key===b.clan){const c=b.hand.find(c=>c.clan&&c.clan!==b.clan);if(c&&caseRefute(b,wc.id,c.id)){lines.push(G.log[0].t);return}}}
-  lines.push(`${Who(b)} молчит.`)}
+  lines.push(`${Who(b)} ${b.id==="me"?"молчите":"молчит"}.`)}
 function botSheriff(b,lines){const C=G.case;if(!C)return;const T=tplOf(C);
   for(const cell of T.cells){const v=C.cells[cell.id];if(!v)continue;const hurts=cell.who&&v.card.clan===b.clan;if(!hurts&&Math.random()>.25)continue;
     const c=b.hand.find(c=>fits(c,cell)&&(!cell.who||c.clan!==b.clan)&&!(c.dirty&&c.clan===b.clan));if(c){sheriffRewrite(b,cell.id,c.id);lines.push(G.log[0].t);return}}}
@@ -1406,6 +1470,7 @@ function walkStep(){
   if(!G.path.length||G.enc||G.phase!=="walk"){render();return}
   const k=G.path.shift();if(G.time>=CONFIG.nightEnd){G.path=[];dawn();return}
   G.pos=k;advance(1);if(G.phase!=="walk"){render();return}
+  dawnWarnCheck();if(G.alert)G.path=[];
   const first=!G.visited.has(k),firstT=!G.visitedTonight.has(k);reveal(k);G.visited.add(k);G.visitedTonight.add(k);
   footstep();setDistrictSound();const h=G.city.map[k];if(first)addLog(`Вы впервые в районе «${h.name}» (${TYPES[h.t].n}).`);focusCam();
   const hr=G.homeRun;
@@ -1413,9 +1478,10 @@ function walkStep(){
   if(!hr&&meetCheck()){G.path=[];render();return}
   if(!hr&&h.t!=="ely"&&firstT&&Math.random()<CONFIG.walkEnc){G.path=[];const [t,x,c]=pick(STREET);G.enc={kind:"ev",h:k,e:{t,x,c:withPass(c)},res:null};render();return}
   if(G.time===CONFIG.nightEnd-2)addLog("<b>Небо на востоке сереет.</b> Час до рассвета.");
+  if(G.alert){render();return}
   if(G.time>=CONFIG.nightEnd){G.path=[];render();setTimeout(dawn,400);return}
   render();if(G.path.length)setTimeout(walkStep,reduceMotion()?40:(hr?200:340));else G.homeRun=false}
-function spend(n){advance(n);if(G.time>=CONFIG.nightEnd&&G.phase==="walk"){dawn();return true}return false}
+function spend(n){advance(n);if(G.time>=CONFIG.nightEnd&&G.phase==="walk"){dawn();return true}dawnWarnCheck();return false}
 
 /* ---------- действия в районе ---------- */
 const canSearch=()=>G.city.map[G.pos].t!=="ely"&&G.searchedTonight[G.pos]!==G.night;
@@ -1508,10 +1574,11 @@ function courtAdvance(){const Ct=G.court;
   if(Ct.i>=Ct.order.length||!G.case){Ct.phase="sheriff";const sh=G.sheriff&&actorById(G.sheriff);
     if(sh&&sh.id!=="me"&&sh.alive&&G.case){botSheriff(sh,Ct.lines);Ct.phase="result";courtResult()}else if(!sh||!G.case){Ct.phase="result";courtResult()}}}
 function courtPass(){G.court.lines.push("Вы молчите.");G.court.i++;courtAdvance();render()}
-function courtResult(){const Ct=G.court,C=G.case;if(!C){Ct.res=["Дело закрыто."];return}
+function courtResult(){const Ct=G.court,C=G.case;if(!C){Ct.res=["Дело закрыто."];return}Ct.snap=C;
   const all=freeCells().length===0;C.gath++;const pat=PERSONAS[G.persona].patience;
   if(all)Ct.res=verdict(false);else if(C.gath>=pat){Ct.res=["<b>Терпение Князя кончилось.</b> Пустые места в деле займут слухи.",...verdict(true)]}
-  else{const left=pat-C.gath;Ct.res=[`Князь распускает двор. ${left===1?"Это последний сбор, который он ждёт.":`Он будет ждать ещё ${left} ${left<5?"сбора":"сборов"}.`} Пока что, говорит он, слухи нашёптывают ему вот что:`,
+  else{const left=pat-C.gath;const N=Math.max(1,Math.min(left*2,CONFIG.nights-G.night));G.case.deadline=G.night+N;
+    Ct.res=[`<b class="ct-wait">Решение ещё не вынесено.</b>`,`«Я выслушал вас, — говорит Князь. — Этого мало. На то, чтобы разобраться в ситуации, даю вам ${N} ${N===1?"ночь":N<5?"ночи":"ночей"}. ${left===1?"Следующий сбор — последний: дальше я решу сам.":`Я жду вас на следующих сборах — ещё ${left}.`} А пока слухи нашёптывают мне вот что:»`,
     freeCells().map(cell=>{const L=leader(cell);return `<b>${cell.l}:</b> ${L?L.top.txt+(L.w>1?` <span class="hint">(повторяют ${L.w} раза)</span>`:""):"тишина — если никто ничего не принесёт, Князь решит сам"}`}).join("<br>")]}}
 function leaveCourt(){G.gathered=G.night;G.court=null;G.phase="walk";G.time=Math.min(CONFIG.nightEnd,Math.max(G.time+2,CONFIG.gTo));addLog("Двор расходится.");
   for(const b of G.B)if(b.alive&&b.pos==="0,0")b.target=null;
@@ -1529,9 +1596,9 @@ function caughtByDawn(){const h=G.city.map[G.pos];
   if(G.clan==="gan"&&["park","edge","cem"].includes(h.t)){G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.dayNote=`Солнце встаёт, а вы уходите в землю «${h.name}», как в тёмную воду. Голод +1.`;addLog(`<b>Рассвет.</b> ${G.dayNote}`);return}
   const cover=["cem","old","slum","ind","port","res","rail","market","theatre","hosp","uni"].includes(h.t);let p=cover?.5:.2;if(G.clan==="nos")p+=.25;if(G.hunger>=4)p-=.1;
   if(Math.random()<p){G.hunger=CONFIG.hungerMax-1;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);G.status=clamp(G.status-1,0,10);G.burned=true;
-    G.dayNote=`Первый луч касается руки, когда вы уже ломаете дверь подвала в «${h.name}». Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1. Следующей ночью вы очнётесь только к полуночи.`;addLog(`<b>Рассвет застаёт вас вне убежища.</b> ${G.dayNote}`)}
-  else{G.deathText=`Вы не успели. Рассвет застаёт вас в «${h.name}»${cover?", и ни одна дверь не открылась вовремя":", где негде спрятаться"}. Через минуту от вас остаётся только пепел.`;G.dead="sun"}}
-function dawn(){if(G.phase!=="walk")return;G.enc=null;G.pick=null;G.homeRun=false;G.dayNote=G.dayNote||null;
+    G.dayNote=`Первый луч касается руки, когда вы уже ломаете дверь подвала в «${h.name}». Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1. Следующей ночью вы очнётесь только к полуночи.`;addLog(`<b>Рассвет застаёт вас вне убежища.</b> ${G.dayNote}`);G.sunScene={kind:"burn",night:G.night,text:G.dayNote}}
+  else{G.deathText=`Вы не успели. Рассвет застаёт вас в «${h.name}»${cover?", и ни одна дверь не открылась вовремя":", где негде спрятаться"}. Через минуту от вас остаётся только пепел.`;G.dead="sun";G.sunScene={kind:"death",night:G.night,text:G.deathText+(G.deathMode==="respawn"?" Но кровь клана не кончается — где-то в городе просыпается новый неонат.":"")}}}
+function dawn(){if(G.phase!=="walk")return;G.enc=null;G.pick=null;G.homeRun=false;G.alert=null;G.path=[];G.dayNote=G.dayNote||null;
   const safe=G.pos===G.haven||shelterAt(G.pos);if(!safe)caughtByDawn();else if(G.pos!==G.haven){G.wakeAt=G.pos;addLog(`<b>Рассвет.</b> Вы пережидаете день в «${dname(G.pos)}» — у своих.`)}else addLog("<b>Рассвет.</b> Вы засыпаете в убежище за мгновение до первых лучей.");
   if(G.dead){if(G.deathMode==="respawn"){respawn("Солнце");}else{endGame("dead");return}}
   // рассвет: итоги влияния за ночь — результат виден всем, вклад скрыт
@@ -1623,13 +1690,65 @@ function setupScreen(){const S=G.setup;const sel=S.sel||{};
    <div class="su-bar">${d?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${FAC[S.fac].name} · ${d==="final"?"одна жизнь":"новый неонат"}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="G.setup.death='${d}';startGame()">Выйти в ночь</button>`:'<span class="hint">Выберите правило, чтобы начать.</span>'}</div></div>`}
 
 
+/* ============================ ЭКРАН СБОРА В ЭЛИЗИУМЕ ============================
+   Сверху — дело и слово Князя, снизу — ячейки-карточки, под ними ваши находки. */
+function cSel(id){G.csel=G.csel===id?null:id;render()}
+function cDo(mode,cell){const id=G.csel;if(!id)return;G.pick={mode,cell};G.csel=null;elyDo(id)}
+function slotHtml(C,cell,turn,sheriff){const v=C.cells[cell.id],L=v||!G.case?null:leader(cell);const sel=G.csel&&G.hand.find(c=>c.id===G.csel);
+  const tag=cell.k.map(k=>`<span title="${KIND[k]}">${KICON[k]}</span>`).join("");let body,acts="";
+  if(v){const a=actorById(v.by);body=`<div class="sl-card"><span class="ki">${KICON[v.card.k]||"✦"}</span><b>${esc(v.card.name)}</b><span class="hint">${cardTags(v.card)}</span><span class="sl-by">положил${a&&a.id==="me"?"и вы":": клан "+(a?CLANS[a.clan].name:"?")}</span></div>`;
+    if(sheriff&&sel&&fits(sel,cell))acts=`<button class="primary" onclick="cDo('rewrite','${cell.id}')">Переписать этой картой</button>`}
+  else{body=L?`<div class="sl-rum"><span class="eyebrow">Слух${L.w>1?` ×${L.w}`:""}</span><p>${esc(L.top.txt)}</p></div>`:`<div class="sl-empty">пусто</div>`;
+    if(turn&&sel){if(fits(sel,cell))acts+=`<button class="primary" onclick="cDo('place','${cell.id}')">Положить сюда</button>`;
+      if(L&&(cell.key==="clan"?sel.clan:sel.d)!==L.key)acts+=`<button onclick="cDo('refute','${cell.id}')">Оспорить слух</button>`}}
+  const hl=sel&&!v&&turn&&fits(sel,cell)?" can":"";
+  return `<div class="slot${v?" full":""}${hl}${cell.who?" who":""}"><div class="sl-h"><span class="sl-l">${cell.l}</span><span class="sl-k">${tag}</span></div>${cell.who?'<span class="sl-who">обвиняемый</span>':""}${body}${acts?`<div class="sl-a">${acts}</div>`:""}</div>`}
+function courtScreen(){const Ct=G.court,P=G.prince;if(!Ct)return "";const C=G.case||Ct.snap;
+  const T=C?tplOf(C):CASES[0];
+  const per=PERSONAS[G.persona];const sev=clamp(T.sev+per.sev+Math.floor((G.night-1)/4),1,4);
+  const turn=Ct.phase==="turns",sheriff=Ct.phase==="sheriff";
+  const order=Ct.order.map((id,i)=>{const a=actorById(id);return `<span class="ord${i===Ct.i&&turn?" now":""}${i<Ct.i?" past":""}" style="--cc:${CLANS[a.clan].color}">${a.id==="me"?"Вы":CLANS[a.clan].name} <i>${a.status}</i></span>`}).join("");
+  const top=`<section class="ct-top"><span class="eyebrow">Элизиум · сбор двора · ночь ${G.night}</span>
+    <h1>${T.t}</h1><p class="ct-why">«${T.why}»</p>
+    <p class="ct-meta">Князь ${P.name} · ${per.line} Обвинённого ждёт: <b>${PUNISH[sev].t}</b>.${G.case?` Сборов по делу: ${C.gath} из ${per.patience}.`:""}</p>
+    <div class="ct-order"><span class="hint">Слово по Статусу:</span>${order}${G.sheriff?`<span class="hint">· Шериф: ${G.sheriff==="me"?"вы":CLANS[actorById(G.sheriff).clan].name}</span>`:""}</div></section>`;
+  const slots=C?`<section class="ct-slots">${T.cells.map(c=>slotHtml(C,c,turn,sheriff)).join("")}</section>`:"";
+  const log=Ct.lines.length?`<div class="ct-log">${Ct.lines.map(l=>`<p>${l}</p>`).join("")}</div>`:"";
+  let bottom="";
+  if(Ct.phase==="intro")bottom=`<div class="ct-act"><p>${Ct.fresh?"Князь поднимается с кресла и говорит о том, что случилось. Зал затихает.":"Князь напоминает: дело всё ещё открыто."}</p><button class="primary" onclick="G.court.phase='turns';courtAdvance();render()">Слушать двор</button></div>`;
+  else if(turn||sheriff){const sel=G.csel;const alibi=turn&&accusedBy(G);const ex=turn?exposeTargets(G):[];
+    bottom=`<div class="ct-act"><p><b>${turn?"Ваше слово.":"Право Шерифа."}</b> ${turn?"Выберите находку внизу, затем ячейку — или промолчите.":"Выберите находку и заполненную ячейку, чтобы переписать её — один раз за сбор."}</p>
+      <div class="row">${turn?`<button onclick="G.csel=null;courtPass()">Промолчать</button>`:`<button onclick="G.csel=null;G.court.phase='result';courtResult();render()">Не переписывать</button>`}
+      ${alibi?`<button class="primary" ${sel&&G.hand.find(c=>c.id===sel&&c.clan===G.clan)?"":"disabled"} onclick="G.pick={mode:'alibi'};const id=G.csel;G.csel=null;elyDo(id)">Опровергнуть обвинение выбранной картой</button>`:""}
+      ${ex.map(c=>`<button onclick="exposeNow('${c}')">Разоблачить клан ${CLANS[c].name}</button>`).join("")}</div></div>
+      <div class="ct-hand">${G.hand.map(c=>`<button class="hc${G.csel===c.id?" on":""}" onclick="cSel('${c.id}')"><span class="ki">${KICON[c.k]}</span><b>${esc(c.name)}</b><span class="hint">${cardTags(c)}</span>${c.dirty&&c.clan===G.clan?'<span class="tag bad">грязь на себя</span>':""}${c.trace?'<span class="tag">след</span>':""}</button>`).join("")||'<p class="hint">Находок нет.</p>'}</div>`}
+  else bottom=`<div class="ct-act ct-res">${(Ct.res||[]).map(t=>`<p>${t}</p>`).join("")}<button class="primary" onclick="leaveCourt()">Покинуть Элизиум</button></div>`;
+  return `<div class="ct-in">${top}${slots}${log}${bottom}</div>`}
+
+/* ============================ РАССВЕТ: предупреждение и сцена ============================ */
+function homeNeed(){const p=bfs(G.pos,G.haven,true);return p?p.length:0}
+function dawnWarnCheck(){if(G.phase!=="walk"||G.pos===G.haven||G.homeRun||shelterAt(G.pos))return;const need=homeNeed(),left=CONFIG.nightEnd-G.time;
+  if(left<=need+1&&G.warn2!==G.night){G.warn2=G.night;G.warn1=G.night;G.alert={lvl:2,left,need};G.path=[]}
+  else if(left<=need+4&&G.warn1!==G.night){G.warn1=G.night;G.alert={lvl:1,left,need};G.path=[]}}
+const hm=h=>`${Math.floor(h/2)?Math.floor(h/2)+" ч":""}${h%2?" 30 мин":""}`.trim()||"0 мин";
+function alertHtml(){const A=G.alert;if(!A)return "";
+  return `<div class="dawn-alert lvl${A.lvl}"><div class="da-box"><span class="eyebrow">${A.lvl===2?"Рассвет вот-вот":"Небо светлеет"}</span>
+   <h2>${A.lvl===2?"Солнце вот-вот взойдёт":"До рассвета "+hm(A.left)}</h2>
+   <p>${A.lvl===2?`До рассвета ${hm(A.left)}, а дорога до убежища — ${hm(A.need)}. Ещё немного — и вы сгорите.`:`Дорога до убежища — ${hm(A.need)}. Если солнце застанет вас на улице, можно не проснуться.`}</p>
+   <div class="row"><button class="primary" onclick="G.alert=null;goHome()">Домой сейчас</button><button onclick="G.alert=null;render()">Ещё задержусь</button></div></div></div>`}
+function sunHtml(){const S=G.sunScene;if(!S)return "";
+  return `<div class="sun-scene ${S.kind}"><div class="sun-glow"></div><div class="sun-box"><span class="eyebrow">Ночь ${S.night} · 06:00</span><h1>${S.kind==="death"?"Рассвет":"Рассвет застал вас на улице"}</h1><p>${S.text}</p>
+   <button class="primary" onclick="G.sunScene=null;render()">${G.phase==="end"?"К итогам":"Дальше"}</button></div></div>`}
+
+
 /* ============================ ИНТЕРФЕЙС ============================ */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const KICON={c:"☉",i:"◆",p:"⌖"};
 function cardHtml(c,btn){return `<div class="crd k-${c.k}${c.dirty&&c.clan===G.clan&&G.hand.includes(c)?" dirty":""}"><div class="crd-h"><span class="ki" title="${KIND[c.k]||"слух"}">${KICON[c.k]||"✦"}</span><b>${esc(c.name)}</b>${c.pw>1?'<span class="tag">сильная</span>':""}${c.dirty&&c.clan===G.clan&&G.hand.includes(c)?'<span class="tag bad">грязь на себя</span>':""}${c.trace?`<span class="tag">след: ${c.trace.fac==="ana"?"анархи":"двор"}</span>`:""}</div>
   <span class="hint">${KIND[c.k]||"слух"} · ${cardTags(c)}</span>${btn||""}</div>`}
 function hud(){if(!G||!G.clan)return "";const left=Math.max(0,CONFIG.nightEnd-G.time);const pct=(G.time-CONFIG.nightStart)/(CONFIG.nightEnd-CONFIG.nightStart)*100;
-  return `<div class="hud"><div class="clock"><span class="big">${fmtTime(G.time)}</span><span class="hint">ночь ${G.night} из ${CONFIG.nights} · до рассвета ${Math.floor(left/2)} ч${left%2?" 30 мин":""}</span><div class="sky"><span style="width:${pct}%"></span></div></div>
+  const away=G.phase==="walk"&&G.pos!==G.haven&&!shelterAt(G.pos);const need=away?homeNeed():0;const urg=away?(left<=need+1?" crit":left<=need+4?" warn":""):"";
+  return `<div class="hud${urg}"><div class="clock"><span class="big">${fmtTime(G.time)}</span><span class="hint">ночь ${G.night} из ${CONFIG.nights} · до рассвета ${hm(left)}${away?` · <b class="homeway">домой ${hm(need)}</b>`:""}</span><div class="sky"><span style="width:${pct}%"></span></div></div>
   <div class="meters"><span>Статус <b>${G.status}</b></span><span>Деньги <b>${G.money}</b></span><span>Голод <b class="pips">${"●".repeat(G.hunger)}${"○".repeat(CONFIG.hungerMax-G.hunger)}</b></span><span>Тревога <b>${G.alarm}/${CONFIG.alarmMax}</b></span><span>Карты <b>${G.hand.length}</b></span>
   <span title="Знаете только вы">Тайно за: <b style="color:${FAC[G.fac].color}">${FAC[G.fac].name}</b></span></div></div>`}
 function genCard(){return `<div class="card intro"><span class="eyebrow">Город строится</span><h2>Город, в котором предстоит жить вечно</h2>
@@ -1752,10 +1871,12 @@ function render(){if(!G)return;$("#hud").innerHTML=hud();let s="";
   if(G.phase==="gen"||G.phase==="built")s=genCard();
   else if(G.phase==="setup")s="";
   else if(G.phase==="walk")s=(G.ritualMode?`<div class="card intro"><h2>Ритуал</h2><p>Нажмите на любой открытый район: вы увидите его и соседние, вместе с невидимыми.</p><button onclick="G.ritualMode=false;render()">Отмена</button></div>`:"")+pickCard()+encCard()+(!G.introDone&&!G.enc?introCard():"")+summonsCard()+caseCard(G.pos==="0,0"&&!G.enc&&!G.pick)+(G.enc||G.pick?"":hereCard()+actionsCard())+handCard()+rivalsCard()+journalCard();
-  else if(G.phase==="court")s=pickCard()+(G.pick?"":courtCard())+handCard();
+  else if(G.phase==="court")s=caseCard(false)+rivalsCard()+journalCard();
   else if(G.phase==="day")s=dayCard()+caseCard(false)+rivalsCard()+journalCard();
   else if(G.phase==="end")s=endCard()+journalCard();
   {const su=$("#setup");if(su){const on=G.phase==="setup";su.hidden=!on;if(on){su.innerHTML=setupScreen();document.body.classList.add("su-open")}else{su.innerHTML="";document.body.classList.remove("su-open")}}}
+  {const ct=$("#court");if(ct){const on=G.phase==="court"&&!!G.court;ct.hidden=!on;ct.innerHTML=on?courtScreen():"";document.body.classList.toggle("ct-open",on)}}
+  {const ov=$("#ovl");if(ov){const h=sunHtml()||alertHtml();ov.hidden=!h;ov.innerHTML=h}}
   $("#side").innerHTML=s;$("#zoom").hidden=!G.clan;document.querySelectorAll("#zoom button").forEach(b=>b.classList.toggle("on",b.dataset.z===G.zoom));
   drawFog();drawMarks();save()}
 function drawMarks(){if(!G||!$("#marks"))return;let s="";
