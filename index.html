@@ -1533,7 +1533,7 @@ function hud(){if(!G||!G.clan)return "";const left=Math.max(0,CONFIG.nightEnd-G.
   return `<div class="hud"><div class="clock"><span class="big">${fmtTime(G.time)}</span><span class="hint">ночь ${G.night} из ${CONFIG.nights} · до рассвета ${Math.floor(left/2)} ч${left%2?" 30 мин":""}</span><div class="sky"><span style="width:${pct}%"></span></div></div>
   <div class="meters"><span>Статус <b>${G.status}</b></span><span>Деньги <b>${G.money}</b></span><span>Голод <b class="pips">${"●".repeat(G.hunger)}${"○".repeat(CONFIG.hungerMax-G.hunger)}</b></span><span>Тревога <b>${G.alarm}/${CONFIG.alarmMax}</b></span><span>Карты <b>${G.hand.length}</b></span>
   <span title="Знаете только вы">Тайно за: <b style="color:${FAC[G.fac].color}">${FAC[G.fac].name}</b></span></div></div>`}
-function genCard(){return `<div class="card intro"><span class="eyebrow">Город строится</span><h2>Город, в котором правду решает Князь</h2>
+function genCard(){return `<div class="card intro"><span class="eyebrow">Город строится</span><h2>Город, в котором предстоит жить вечно</h2>
   <p>Река режет его надвое. В центре — Элизиум. Часть районов держит Камарилья, часть — анархи, остальные ничьи. Каждый раз город и расклад сил собираются заново.</p>
   <p class="hint">Город №${G.seed}.</p>${G.phase==="built"?`<div class="row"><button onclick="newCity()">Другой город</button><button class="primary" onclick="G.phase='setup';render()">Войти в город</button></div>`:'<p class="hint">Загораются огни…</p>'}</div>`}
 function setupCard(){const S=G.setup;
