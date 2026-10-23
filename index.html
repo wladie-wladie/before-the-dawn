@@ -118,7 +118,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.7</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.8</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -138,7 +138,7 @@ footer{margin-top:22px;max-width:1000px}
 <footer class="hint"><a href="intriga-v02.html" style="color:var(--dim)">Прошлая версия v0.2 «Ночная интрига»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
-   BEFORE THE DAWN · v0.7
+   BEFORE THE DAWN · v0.8
    Большой гекс-город: генерация, прогулка, встречи, звук районов.
    Все тексты и числа — в разделе ДАННЫЕ.
    ===================================================================== */
@@ -872,7 +872,7 @@ function chooseClan(id){
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
   G.haven=h.k;G.pos=h.k;reveal(h.k);G.visited.add(h.k);G.visitedTonight.add(h.k);G.seen.add("0,0");
-  G.prince=pick(PRINCES);G.rivals=shuffle(Object.keys(CLANS).filter(x=>x!==id)).slice(0,3);G.truth=rollTruth();initWorld();
+  G.prince=pick(PRINCES);G.rivals=shuffle(Object.keys(CLANS).filter(x=>x!==id)).slice(0,3);G.truth=rollTruth();initWorld();clanPassiveInit();
   G.phase="walk";
   addLog(`<b>Ночь 1.</b> Вы просыпаетесь в своём убежище: «${h.name}». До рассвета — ${(CONFIG.nightEnd-G.time)/2} часов.`);cqAnnounce();
   focusCam(true);render();
@@ -1090,8 +1090,8 @@ function hunt(){
   const h=G.city.map[G.pos];const n=Math.max(1,(G.hunger>=4?2:3)-(threatLvl()>=6?1:0)-(G.curfewNight===G.night?1:0));if(G.R)rivalsAdvance(2);const dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));const ok=dice.some(v=>v>=5)||(cqWon("tor")&&["club","theatre","res"].includes(h.t));
   const busy=["club","res","market","theatre","rail"].includes(h.t);
   G.time=Math.min(CONFIG.nightEnd,G.time+2);
-  const out=ok?{hunger:busy?-2:-1}:{alarm:1};apply(out);
-  addLog(`Охота в «${h.name}» [${dice.join(" ")}]: ${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1."):"вас заметили, пришлось уйти ни с чем. Тревога +1."}`);
+  const out=ok?{hunger:(busy?-2:-1)-(G.clan==="bru"?1:0)}:{alarm:1};apply(out);
+  addLog(`Охота в «${h.name}» [${dice.join(" ")}]: ${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1.")+(G.clan==="bru"?" Ярость берёт своё: Голод ещё −1.":""):"вас заметили, пришлось уйти ни с чем. Тревога +1."}`);
   if(G.alarm>=CONFIG.alarmMax){closeEnc();return}
   checkCourt();if(G.time>=CONFIG.nightEnd){dawn();return}render();
 }
@@ -1108,7 +1108,7 @@ function chooseEnc(i){
   if(ch.leave){G.enc=null;addLog("Вы уходите, ничего не тронув. Сюда можно вернуться.");render();return}
   if(ch.o&&ch.o.cqwait){const st=COURT.from-G.time;G.time=COURT.from;rivalsAdvance(st);G.enc=null;cqCheck(G.pos);render();return}
   if(ch.together)G.enc.together=ch.together;if(ch.need)consumeNeed(ch.need);
-  if(ch.roll){const n=G.enc&&(G.enc.quest||G.enc.hard)?(G.hunger>=4?1:2):(G.hunger>=4?2:3);dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
+  if(ch.roll){const n=(G.enc&&(G.enc.quest||G.enc.hard)?(G.hunger>=4?1:2):(G.hunger>=4?2:3))+diceBonus();dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
   apply(out);
   if(G.enc.meet&&out.meet)out=meetOutcome(out.meet,{...out});
   if(G.enc.side)out=sideOutcome(out);
@@ -1266,7 +1266,7 @@ function drawMarks(){
     {const n=Math.floor(threatLvl()/2);const list=Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"&&G.seen.has(h.k));
      for(let i=0;i<Math.min(n,list.length);i++){const h=list[(i*7919+G.night*31)%list.length];const [x,y]=px(h.q,h.r);s+=`<circle class="police" cx="${x-14}" cy="${y-12}" r="2.4" fill="#4a7bff"/><circle class="police p2" cx="${x-9}" cy="${y-12}" r="2.4" fill="#ff3b4a"/>`}}
     // соперники рядом с вами
-    if(G.R&&G.phase==="walk")for(const r of Object.values(G.R)){if(!cqWon("nos")&&(hexDist(r.pos,G.pos)>1||!G.seen.has(r.pos)))continue;const h=G.city.map[r.pos];const [x,y]=px(h.q,h.r);
+    if(G.R&&G.phase==="walk")for(const r of Object.values(G.R)){if(!cqWon("nos")&&(hexDist(r.pos,G.pos)>(G.clan==="nos"?2:1)||!G.seen.has(r.pos)))continue;const h=G.city.map[r.pos];const [x,y]=px(h.q,h.r);
       s+=`<circle cx="${x+14}" cy="${y+8}" r="7" fill="#0b0c12" stroke="${CLANS[r.clan].color}" stroke-width="2"/><text x="${x+14}" y="${y+11}" text-anchor="middle" font-size="8" font-weight="700" fill="${CLANS[r.clan].color}">${CLANS[r.clan].name[0]}</text>`}
     // место поручения
     if(G.order&&((G.order.stage==="go"&&G.order.known)||G.order.stage==="deliver")){const tk=G.order.stage==="go"?G.order.known:"0,0";const h=G.city.map[tk];const [x,y]=px(h.q,h.r);s+=`<text x="${x+20}" y="${y-16}" text-anchor="middle" class="haven" style="fill:#ffd36b">✦</text>`}
@@ -1349,8 +1349,8 @@ function genCard(){
     ${G.phase==="built"?`<div class="row"><button onclick="newCity()">Другой город</button><button class="primary" onclick="G.phase='clan';render()">Войти в город</button></div>`:'<p class="hint">Загораются огни…</p>'}</div>`;
 }
 function clanCard(){
-  return `<div class="card intro"><span class="eyebrow">Кто вы</span><h2>Выберите клан</h2><div class="clans">${Object.entries(CLANS).map(([id,c])=>`<button onclick="chooseClan('${id}')"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.line}</span></button>`).join("")}</div>
-    <p class="hint">Пока клан влияет только на цвет и настроение. Механики вернутся позже, слоями.</p></div>`;
+  return `<div class="card intro"><span class="eyebrow">Кто вы</span><h2>Выберите клан</h2><div class="clans">${Object.entries(CLANS).map(([id,c])=>`<button onclick="chooseClan('${id}')"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.line}</span>${passiveHtml(id)}</button>`).join("")}</div>
+    <p class="hint">Способность клана действует всю партию. Ещё одну клан даст за своё дело.</p></div>`;
 }
 function walkIntroCard(){
   return `<div class="card intro"><span class="eyebrow">Ночь первая</span><h2>Выйти в город</h2><p>Пройдитесь по городу. Узнайте его районы, людей и тайны. Каждый шаг — полчаса ночи. Встречи на улицах могут накормить вас, рассказать что-то важное — или поставить под угрозу Маскарад.</p>
@@ -1959,6 +1959,8 @@ function cqAct(a){const T=G.truth,S=G.objSt;
   if(a==="motive"){if(T.patron)learn("patron",`за видео стоит клан ${CLANS[T.patron].name}.`);learn("motive",tfill(MOTIVES[T.motive].text));return ` Из их переговоров ясно: ${tfill(MOTIVES[T.motive].text).toLowerCase()}`}
   if(a==="decoy"){if(["unknown","found"].includes(S.agents.st)){S.agents.st="decoyed";S.agents.by=G.clan;resolved("agents","decoy")}G.heat=clamp((G.heat||0)-2,0,8);return " Инквизиция поедет копать пустые ходы."}
   if(a==="heat"){G.heat=clamp((G.heat||0)-1,0,8);return ""}
+  if(a==="heat2"){G.heat=clamp((G.heat||0)-2,0,8);return " Город остывает."}
+  if(a==="debtRival"){soc(G.CQ.rival).debt++;return ""}
   return ""}
 function cqOutcome(out){const Q=G.CQ,D=CLANQ[Q.id];const s=cqStage();
   if(out.cqleave)return out;
@@ -1982,7 +1984,7 @@ function cqCard(){if(!G.CQ)return "";const Q=G.CQ,D=CLANQ[Q.id];const s=cqStage(
   else body=`<p class="hint">Этап ${Q.step+1} из ${D.stages.length} · Примоген: ${D.elder}.</p>${G.night>=s.n?`<p>${cqFill(s.lead)}</p>`:`<p class="hint">Следующая весть от клана придёт на ${s.n}-ю ночь.</p>`}
    ${s.timed?`<p class="hint" style="color:var(--blood)">Только в ночь совета, с 23:00 до 01:00 — в то же время, что и совет в Элизиуме. Пропустите — дело клана провалено.</p>`:""}
    ${Q.tried===G.night?'<p class="hint">Сегодня там больше ничего не сделать.</p>':""}`;
-  return `<div class="card"><span class="eyebrow">Дело клана · ${CLANS[Q.id].name}</span><h2>${D.title}</h2>${body}</div>`}
+  return `<div class="card"><span class="eyebrow">Клан · ${CLANS[Q.id].name}</span><p>${passiveHtml(Q.id)}</p><h2>${D.title}</h2>${body}</div>`}
 function cqActions(){if(cqWon("tre")&&G.order&&G.order.stage==="go"&&!G.order.known&&(G.used||{}).mirror!==G.night)return `<button onclick="mirror()">Кровавое зеркало · 30 мин</button>`;return ""}
 function mirror(){G.used.mirror=G.night;G.time=Math.min(CONFIG.nightEnd,G.time+1);G.order.known=G.order.k;G.seen.add(G.order.k);
   addLog(`<b>Кровавое зеркало.</b> Капля крови на стекле расплывается в карту города. Цель поручения — «${G.city.map[G.order.k].name}» ✦.`);render()}
@@ -1990,7 +1992,7 @@ function mirror(){G.used.mirror=G.night;G.time=Math.min(CONFIG.nightEnd,G.time+1
 function anyOwe(){return Object.keys(G.soc||{}).find(c=>G.soc[c].owe>0&&G.R[c])}
 function myAlly(){return Object.keys(G.soc||{}).find(c=>G.soc[c].pact&&G.R[c])}
 function needMet(n){if(n==="help")return !!(myAlly()||anyOwe());if(n==="boon")return !!anyOwe();if(n==="item")return G.items.some(i=>ITEMS[i].value>=1);
-  if(n.ally)return (G.allies||[]).includes(n.ally);if(n.flag)return !!(G.CQ&&G.CQ.flags[n.flag]);if(n.noflag)return !(G.CQ&&G.CQ.flags[n.noflag]);return true}
+  if(n.ally)return (G.allies||[]).includes(n.ally);if(n.flag||n.noflag){const f=(G.CQ&&G.CQ.flags)||{};return (!n.flag||!!f[n.flag])&&(!n.noflag||!f[n.noflag])}return true}
 function needLabel(n){return n==="help"?"нужен союзник или тот, кто вам должен":n==="boon"?"нужна услуга, которую вам должны":n==="item"?"отдать ценную вещь из сумки":n.ally?`нужен союзник: ${ALLIES[n.ally].name}`:""}
 function consumeNeed(n){if(n==="help"&&myAlly())return;if(n==="help"||n==="boon"){const c=anyOwe();if(c){G.soc[c].owe--;addLog(`Вы взыскали услугу с клана ${CLANS[c].name}.`)}}
   if(n==="item"){const i=G.items.findIndex(i=>ITEMS[i].value>=1);if(i>=0)G.items.splice(i,1)}}
@@ -2015,7 +2017,7 @@ function info(c){const r=G.R[c];const parts=[];
   return parts.length?`Он говорит вполголоса. ${parts.join("; ")}.`:"«Мне нечего вам сказать — правда нечего»."}
 function tellAll(c,leak){const r=G.R[c];const sh=shareable(c);for(const a of sh)r.known.push(a);
   if(leak&&!soc(c).pact&&sh.length&&Math.random()<.5){pkLearn(sh[0]);return " Похоже, он расскажет это Князю раньше вас."}return ""}
-function tryPact(c){const S=soc(c);const p=clamp(.2+.2*S.rel+.15*S.owe+(G.rpact&&G.rpact.includes(c)?-.25:0)+(G.status>=3?.1:0)-(G.traitor?.3:0),.05,.9);
+function tryPact(c){const S=soc(c);const p=clamp(.2+.2*S.rel+.15*S.owe+(G.rpact&&G.rpact.includes(c)?-.25:0)+(G.status>=3?.1:0)-(G.traitor?.3:0)+(G.clan==="tor"?.15:0),.05,.9);
   if(Math.random()<p){S.pact=true;S.rel=Math.max(S.rel,2);G.seen.add(G.R[c].haven);addLog(`<b>Союз с кланом ${CLANS[c].name}.</b>`);
     return "«Договорились». Теперь вы делитесь сведениями, а в трудную минуту он поручится за вас и укроет при облаве. Союз можно разорвать — но двор запомнит, чего стоит ваше слово."}
   return "Он улыбается одними губами: «Не сейчас. Сначала докажите, что с вами стоит иметь дело»."}
@@ -2277,6 +2279,101 @@ function proxyReport(r){const o=r.order;if(o&&o.proxy===G.clan&&G.order&&G.order
 const WHY_COURT=`<ul class="why"><li><b>Сведения.</b> У других есть куски правды о деле. Без них на суде вам нечего будет сказать.</li><li><b>Поручитель.</b> Если Князь заподозрит вас, без поручителя — ночь в подвале и пустая сумка.</li><li><b>Укрытие.</b> Убежище союзника спасёт, если рассвет застанет вас в пути. Иначе можно сгореть.</li><li><b>Руки.</b> Должник или союзник выполнит ваше поручение за вас, поможет в деле клана, предупредит об облаве.</li></ul><p class="hint">Услуги получают за помощь — выполнив просьбу, уступив дело, поделившись сведениями — и тратят на просьбы. Договориться можно запиской, при встрече на улице и в кулуарах Элизиума.</p>`;
 function homeWarn(){if(G.homeRun||G.pos===G.haven||G.warnedHome===G.night)return;const p=bfs(G.pos,G.haven);if(!p)return;const need=p.length*(G.order&&G.order.carry?2:1);const left=CONFIG.nightEnd-G.time;
   if(left<=need+3){G.warnedHome=G.night;addLog(`<b style="color:var(--blood)">До рассвета ${Math.floor(left/2)} ч${left%2?" 30 мин":""}, а дорога домой — ${need*30} мин.</b> Если солнце застанет вас на улице, можно сгореть.`)}}
+
+
+/* ---------- v0.8: больше выборов в делах кланов ---------- */
+Object.assign(ITEMS,{
+  portrait:{name:"Портрет Аделины Вальц",court:"Вы показываете Князю портрет Примогена Тореадоров — настоящей. Князь смотрит долго и молча.",value:3},
+  device:{name:"Датчик Инквизиции",court:"Вы кладёте перед Князем датчик из коллектора. Князь впервые понимает, как близко подобрались охотники.",value:2},
+  mirror:{name:"Зеркало капеллы",court:"Вы ставите перед Князем ритуальное зеркало Тремеров. Он смотрит в него — и отводит глаза.",value:3},
+});
+const CQX={
+ tor:[
+  [{t:"Попросить каплю её крови в знак доверия",o:{text:"Аделина улыбается и прокусывает запястье. Одна капля — и вам легче дышится рядом с ней. Адрес мастерской — {L}.",next:1,hunger:-1,flag:"blood"}},
+   {t:"Сказать, что художник — не ваша забота",o:{text:"«Тогда и клан — не ваша забота», — отвечает она. Адрес вы всё же берёте: {L}. Она это запомнит.",next:1,status:-1}}],
+  [{t:"Изучить незаконченный холст",roll:true,ok:{text:"На холсте — Князь, и под гримом власти у него страх. В записной книжке — адрес, где художник ночует: {L}.",next:1,flag:"prince",secret:"Художник написал Князя таким, какой он есть: испуганным."},fail:{text:"Краска ещё сырая — вы смазываете лицо на холсте. Художник это заметит.",time:1}},
+   {t:"Дождаться художника здесь",o:{text:"Он не приходит. Под утро соседка говорит, где его искать: {L}.",next:1,time:4}}],
+  [{t:"Очаровать его: пусть сам захочет вас защитить",roll:true,ok:{text:"Он смотрит на вас, как на шедевр: «Я сделаю всё, как скажете». Вернисаж — в ночь совета, в 23:00. Галерея — {L}.",next:1,flag:"charmed"},fail:{text:"Очарование соскальзывает: он художник и видит, как вы это делаете. Приходите завтра."}},
+   {t:"Отвезти его в больницу",o:{text:"Вы сидите с ним в приёмном покое до утра. Перед уходом он шепчет адрес галереи: {L}. Вернисаж — в ночь совета, в 23:00.",next:1,time:3,flag:"kind",alarm:-1}}],
+  [{t:"Попросить Марка самому снять картины",need:{flag:"charmed"},o:{text:"Марк объявляет, что выставка отменена «по личным причинам». Гости расходятся, картины уезжают в ваш багажник.",next:1,flag:"swap"}},
+   {t:"Подкупить галериста вещью",need:"item",o:{text:"Галерист меняет экспозицию на старые пейзажи. Портреты — в подсобке, ключ от неё — у вас.",next:1,flag:"swap"}},
+   {t:"Не мешать — и скупить все картины",o:{text:"Вы покупаете всё через подставных лиц. Город видел портреты, но теперь они ваши. Тревога растёт.",next:1,flag:"bought",alarm:2,status:1}}],
+  [{t:"Очаровать его",roll:true,ok:{text:"Он вдруг соглашается, что портрет принадлежит Аделине по праву, — и даже рад этому.",next:1},fail:{text:"«Тореадорские фокусы на меня не действуют». Он выставляет вас за дверь.",time:1}},
+   {t:"Пообещать ему услугу",o:{text:"«Одна услуга — и портрет ваш». Он записывает это в книжечку. Теперь вы ему должны.",next:1,act:"debtRival"}}],
+  [{t:"Рассказать про портрет Князя",need:{flag:"prince"},o:{text:"«Князь боится? — Аделина смеётся впервые за век. — Это знание дороже любого портрета». Клан запомнит.",end:"win",status:2}},
+   {t:"Оставить портрет себе",o:{text:"Вы говорите, что портрет сгорел. Аделина не верит, но доказать не может. Теперь он висит у вас — и иногда смотрит.",end:"fail",item:"portrait"}}],
+ ],
+ ven:[
+  [{t:"Потребовать долю в банке за работу",o:{text:"Граф поднимает бровь: «Справитесь — поговорим». Квартира Мартынова — {L}.",next:1,flag:"share"}},
+   {t:"Подчинить себе секретаря графа",roll:true,ok:{text:"Секретарь графа теперь служит и вам. Он шепчет: квартира Мартынова — {L}, ключ под ковриком.",next:1,flag:"ghoul"},fail:{text:"Граф замечает, что вы делаете с его секретарём. «Не в моём доме». Адрес — {L}. Он запомнит.",next:1,status:-1}}],
+  [{t:"Отправить секретаря графа всё осмотреть",need:{flag:"ghoul"},o:{text:"Секретарь находит то, что пропустили бы вы: квитанцию со склада — {L}.",next:1}},
+   {t:"Позвонить в банк от имени Мартынова",roll:true,ok:{text:"Ночной оператор сообщает: вчера карту Мартынова использовали на складе охранной фирмы — {L}.",next:1,flag:"trace"},fail:{text:"Оператор что-то подозревает и кладёт трубку.",time:1}}],
+  [{t:"Подчинить охранника и выйти через дверь",roll:true,ok:{text:"Охранник сам отвязывает Мартынова и провожает вас до машины. Утром он ничего не вспомнит.",next:1,flag:"free"},fail:{text:"Охранник борется с внушением и тянется к рации. Вы уходите.",alarm:1}},
+   {t:"Купить Мартынова у охраны",need:"item",o:{text:"Гули сенешаля тоже люди: ценная вещь — и Мартынов «сбежал сам».",next:1,flag:"free"}},
+   {t:"Бросить Мартынова, снять копию книги",o:{text:"Вы фотографируете страницы, пока охрана курит. Мартынов смотрит вам вслед.",next:1,flag:"copy"}}],
+  [{t:"Предъявить фотокопии книги",need:{flag:"copy"},o:{text:"Фотокопии ложатся на стол. Комиссия откладывает решение, люди сенешаля уходят злыми.",next:1,flag:"vote"}},
+   {t:"Привести свидетеля через должника",need:"help",o:{text:"Сородич, который вам должен, приводит своего человека из мэрии. Голосование проваливается.",next:1,flag:"vote"}},
+   {t:"Уступить банк, но выторговать долю",o:{text:"Банк уходит людям сенешаля, но десятая часть — клану. Граф будет недоволен, но не разорён.",next:1,flag:"lost",status:1}}],
+  [{t:"Шантажировать сенешаля книгой",roll:true,ok:{text:"Сенешаль соглашается платить вам лично. Теперь у вас есть деньги — и очень опасный враг.",next:1,flag:"keep",item:"ledger",status:1},fail:{text:"Сенешаль смеётся: «Попробуйте». Через час к вам приходят его гули. Вы уходите — с книгой, но с шумом.",next:1,flag:"keep",item:"ledger",alarm:2}},
+   {t:"Снять копию, оригинал — графу",o:{text:"Оригинал — графу, копия — в тайник. На всякий случай.",next:1,flag:"coup",item:"ledger",time:2}}],
+  [{t:"Потребовать обещанную долю",need:{flag:"share",noflag:"loyal"},o:{text:"«Справились — получите». Граф подписывает бумагу: часть банка Мартынова — ваша.",end:"win",status:2}}],
+ ],
+ nos:[
+  [{t:"Спросить, кто ещё знает о датчиках",o:{text:"«Никто. И пусть так и будет». Точка на схеме — {L}.",next:1,flag:"secret"}},
+   {t:"Пройти старыми ходами",roll:true,ok:{text:"Короткий путь находится сам: вы знаете эти трубы лучше, чем свою прошлую жизнь. Датчик — {L}.",next:1,time:-1},fail:{text:"Старый ход завален. Придётся идти поверху: {L}.",next:1,time:2}}],
+  [{t:"Стать невидимым и проследить, кто придёт проверить датчик",roll:true,ok:{text:"Под утро приходит техник в комбинезоне. Вы читаете его пропуск через плечо: охранное агентство. Продавец оборудования — барыга: {L}.",next:1,flag:"tech",secret:"Датчики в коллекторах обслуживает охранное агентство."},fail:{text:"Никто не пришёл. Ночь потрачена зря.",time:3}},
+   {t:"Перенастроить датчик слушать пустую трубу",roll:true,ok:{text:"Теперь он передаёт только шум воды. Продавец — барыга: {L}.",next:1,flag:"fake"},fail:{text:"Он пищит и отключается.",alarm:1}}],
+  [{t:"Подслушать, кому он продаёт",o:{text:"Два часа в тени. Покупатель — человек с крестом на брелоке. Карту вы перерисовываете с её отражения в витрине. Сбор клана — {L}.",next:1,flag:"map",time:4}},
+   {t:"Обчистить лавку ночью",roll:true,ok:{text:"Пока он спит, карта перекочёвывает к вам — а с ней и запасной датчик. Сбор клана — {L}.",next:1,flag:"map",item:"device"},fail:{text:"Над дверью звенит колокольчик.",alarm:1}}],
+  [{t:"Промолчать и слушать",o:{text:"Вы слушаете, кто что предлагает. Клан решает затопить ходы, а вы узнаёте, кто из своих торгует с Камарильей. Пост прослушки — {L}.",next:1,flag:"flood",secret:"Один из Носферату продаёт сведения клана Камарилье."}},
+   {t:"Предложить продать сведения о датчиках Князю",o:{text:"Крот долго смотрит на вас. «Камарилья заплатит. Но и запомнит, откуда знает». Клан соглашается. Пост прослушки — {L}.",next:1,flag:"sold",status:1,pk:1}}],
+  [{t:"Стереть записи, не трогая фургон",roll:true,ok:{text:"Неделя записей уходит в пустоту. Они даже не поймут, что что-то потеряли.",next:1,act:"heat2"},fail:{text:"Оператор оборачивается.",alarm:1}},
+   {t:"Подложить датчик в их же фургон",need:{flag:"tech"},o:{text:"Теперь вы слушаете их. Каждое их слово — ваше.",next:1,act:"motive",flag:"bug"}}],
+  [{t:"Сказать, что о датчиках знаете только вы двое",need:{flag:"secret"},o:{text:"«Хорошо. Значит, двор не узнает, как мы это сделали». Крот кладёт вам на ладонь ключ от старых ходов.",end:"win",status:2}},
+   {t:"Отдать Кроту записи из фургона",need:{flag:"bug"},o:{text:"«Теперь у нас есть уши в их машине». Клан запомнит.",end:"win",status:2}}],
+ ],
+ bru:[
+  [{t:"Спросить, за что взяли Тихона",o:{text:"«За то, что сказал вслух: Князь — пиявка. Этого хватило». Спроси у наших в трущобах: {L}.",next:1,flag:"why"}},
+   {t:"Поклясться вытащить его любой ценой",o:{text:"Рената кивает: «Слово сказано». Отступить теперь — значит потерять лицо. Трущобы — {L}.",next:1,flag:"oath",status:1}}],
+  [{t:"Выбить сведения из стукача Шерифа",roll:true,ok:{text:"Стукач сплёвывает кровь: депо, {L}. И Тихон пока жив.",next:1,flag:"snitch"},fail:{text:"Он вырывается и убегает, крича на всю улицу.",alarm:2}},
+   {t:"Поделиться кровью с голодным анархом",o:{text:"Вы протягиваете запястье. Анарх смотрит на вас иначе: «Депо — {L}. Мы с тобой».",next:1,hunger:1,flag:"crew1"}}],
+  [{t:"Выломать дверь будки",o:{text:"Дверь слетает с петель, смотритель убегает. Ключ и график ваши — но шум стоял на весь район. Теперь нужны люди: {L}.",next:1,flag:"key",alarm:2}},
+   {t:"Подкупить смотрителя",need:"item",o:{text:"Смотритель отворачивается к окну. Ключ ваш. Теперь нужны люди: {L}.",next:1,flag:"key"}}],
+  [{t:"Поставить выпивку всему кабаку",o:{text:"До утра — пиво, кровь и песни. Команда собрана, но о налёте теперь знает полгорода. Вход в подвалы — {L}.",next:1,flag:"crew",alarm:2,time:2}}],
+  [{t:"Устроить отвлекающий пожар наверху",o:{text:"Дым в коридорах Элизиума, совет прерывается, охранник бежит наверх. Тихон свободен. Князь в ярости, но не знает, на кого её обратить.",next:1,flag:"freed",alarm:2}},
+   {t:"Договориться с охранником",need:{flag:"snitch"},o:{text:"Вы называете имя стукача — это брат охранника, и вы знаете, где тот прячется. Охранник отворачивается. Тихон свободен.",next:1,flag:"freed"}}],
+  [{t:"Отвести Тихона к Князю и потребовать суда",need:{flag:"freed"},o:{text:"Вы входите в Элизиум вместе с Тихоном: «Суд — или отпустите». Князь отпускает. Рената не знает, восхищаться вами или бояться.",end:"win",status:2,pk:-1}},
+   {t:"Сдержать клятву: вернуться за Тихоном ещё раз",need:{flag:"oath",noflag:"freed"},o:{text:"Следующей ночью вы снова в подвалах — и находите только пустую камеру. Рената кладёт руку вам на плечо: «Ты держишь слово. Это главное».",end:"win",alarm:1}}],
+ ],
+ tre:[
+  [{t:"Спросить, что Регент знает о деле",o:{text:"«Знаю, что Князь не хочет правды. Поэтому мы ищем её сами». Кладбище — {L}.",next:1,flag:"secretive"}},
+   {t:"Потребовать доступ к библиотеке в уплату",o:{text:"«Наглость — тоже дар». Он даёт вам ключ от нижней полки. Кладбище — {L}.",next:1,flag:"library",time:1}}],
+  [{t:"Поднять землю ритуалом, не касаясь её",roll:true,ok:{text:"Земля поднимается в воздух и сама ложится в платок. Сторож крестится и уходит. Морг — {L}.",next:1},fail:{text:"Ритуал срывается, кровь потрачена впустую.",hunger:1}},
+   {t:"Найти в библиотеке рецепт получше",need:{flag:"library"},o:{text:"На нижней полке — рецепт: земля с могилы у ограды, где хоронят самоубийц. Она сильнее. Морг — {L}.",next:1,flag:"pure",time:1}}],
+  [{t:"Подчинить санитара",roll:true,ok:{text:"Санитар сам приносит пробирку и тут же забывает об этом. Кадр видео — {L}.",next:1},fail:{text:"Санитар бежит к телефону.",alarm:1}},
+   {t:"Соскрести кровь с халата патологоанатома",o:{text:"На халате — засохшие капли. Это хуже, но сгодится. Кадр видео — {L}.",next:1,time:2,flag:"weak"}}],
+  [{t:"Отдать ценную вещь ночному админу",need:"item",o:{text:"Админ копирует файл на флешку и уходит курить. Ритуал — в полночь, в ночь совета: {L}.",next:1}},
+   {t:"Вынести системный блок целиком",o:{text:"Вы уходите с системным блоком под мышкой. Охрана бизнес-центра будет долго искать вора. Ритуал — в полночь, в ночь совета: {L}.",next:1,alarm:2}}],
+  [{t:"Взять землю по библиотечному рецепту",need:{flag:"pure"},o:{text:"Зеркало вспыхивает чистым белым светом.",next:1,act:"feeder2"}},
+   {t:"Сорвать ритуал и забрать зеркало себе",o:{text:"Вы опрокидываете круг. Регент кричит что-то на латыни, но зеркало уже под вашим плащом. Капелла этого не простит.",next:1,flag:"stole",item:"mirror"}}],
+  [{t:"Обменять увиденное в зеркале на ещё одну тайну",need:{noflag:"stole"},o:{text:"«Вы торгуетесь с Регентом? — он почти улыбается. — Хорошо». Он открывает вам ещё одну страницу правды.",end:"win",act:"motive",status:1}},
+   {t:"Признаться, что зеркало у вас",need:{flag:"stole"},o:{text:"«Верните — и забудем». Вы не возвращаете. Регент молча закрывает перед вами дверь капеллы.",end:"fail"}}],
+ ],
+};
+for(const k in CQX)CQX[k].forEach((arr,i)=>CLANQ[k].stages[i].c.push(...arr));
+CLANQ.tre.stages[5].c[0].need={noflag:"stole"};
+/* ---------- пассивные способности кланов ---------- */
+const CLAN_PASSIVE={
+  tor:{name:"Очарование",text:"Сородичи с первой ночи относятся к вам теплее, а союз заключить проще. В клубах и театре — лишний кубик в каждой проверке."},
+  ven:{name:"Голубая кровь",text:"Вы начинаете со Статусом 3, и Князь с первой ночи доверяет вам больше, чем остальным."},
+  nos:{name:"Тень",text:"Вы видите Сородичей за два района, а не за один. Если рассвет застал на улице, укрытие найти гораздо проще."},
+  bru:{name:"Ярость",text:"В стычках с Сородичами — два лишних кубика. Удачная охота утоляет голод на 1 сильнее."},
+  tre:{name:"Кровь знает кровь",text:"Лишний кубик в каждой проверке поручений Князя и дела клана."},
+};
+function clanPassiveInit(){if(G.clan==="ven"){G.status=3;G.PK.trust[G.clan]=1}if(G.clan==="tor")for(const c of G.rivals){const S=soc(c);S.rel=Math.min(3,S.rel+1)}}
+function diceBonus(){const E=G.enc;if(!E)return 0;const t=G.city.map[E.h]?G.city.map[E.h].t:"";
+  if(G.clan==="tor"&&["club","theatre"].includes(t))return 1;if(G.clan==="bru"&&E.meet)return 2;if(G.clan==="tre"&&(E.quest||E.cq))return 1;return 0}
+function passiveHtml(id){const p=CLAN_PASSIVE[id];return `<span class="hint"><b>${p.name}.</b> ${p.text}</span>`}
 
 /* ============================ СОХРАНЕНИЕ ============================ */
 const SAVE_KEY="before-the-dawn-city-v3";
