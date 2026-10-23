@@ -118,7 +118,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.8</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.9</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -138,7 +138,7 @@ footer{margin-top:22px;max-width:1000px}
 <footer class="hint"><a href="intriga-v02.html" style="color:var(--dim)">Прошлая версия v0.2 «Ночная интрига»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
-   BEFORE THE DAWN · v0.8
+   BEFORE THE DAWN · v0.9
    Большой гекс-город: генерация, прогулка, встречи, звук районов.
    Все тексты и числа — в разделе ДАННЫЕ.
    ===================================================================== */
@@ -898,7 +898,7 @@ function walkStep(){
   const k=G.path.shift();
   if(G.time>=CONFIG.nightEnd){G.path=[];dawn();return}
   G.pos=k;G.time+=1;if(G.R)rivalsAdvance(1);const first=!G.visited.has(k);const firstTonight=!G.visitedTonight.has(k);
-  reveal(k);G.visited.add(k);G.visitedTonight.add(k);
+  reveal(k);G.visited.add(k);G.visitedTonight.add(k);ganSense(k);
   footstep();setDistrictSound();
   const h=G.city.map[k];
   if(first)addLog(`Вы впервые в районе «${h.name}» (${TYPES[h.t].n}).`);
@@ -1498,9 +1498,9 @@ function raid(){
   if(!tgt){G.raidAt=0;return}
   T.listed=T.listed.filter(c=>c!==tgt);if(!T.listed.length)G.raidAt=0;G.heat=clamp((G.heat||0)+1.5,0,8);
   if(tgt===G.clan){
-    const old=G.city.map[G.haven].name;moveHaven(4);const ally=G.soc?myAlly():null;if(!ally){G.status=clamp(G.status-1,0,5);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax)}
-    const lost=ally?[]:G.items.splice(Math.ceil(G.items.length/2));
-    G.raided=`Днём вас будит грохот: дверь убежища в «${old}» вышибают. Запах бензина, крики, лучи фонарей. Вы уходите через подвалы, обжигаясь о каждую щель света. Новое убежище — «${G.city.map[G.haven].name}».${lost.length?" Часть вещей осталась там.":""}${ally?` Союзник, клан ${CLANS[ally].name}, укрыл вас у себя до заката — и не задал ни одного вопроса.`:" Статус −1."}`;
+    const old=G.city.map[G.haven].name;moveHaven(4);const ally=G.soc?myAlly():null;const pack=!ally&&cqWon("gan");if(!ally&&!pack){G.status=clamp(G.status-1,0,5);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax)}
+    const lost=ally||pack?[]:G.items.splice(Math.ceil(G.items.length/2));
+    G.raided=`Днём вас будит грохот: дверь убежища в «${old}» вышибают. Запах бензина, крики, лучи фонарей. Вы уходите через подвалы, обжигаясь о каждую щель света. Новое убежище — «${G.city.map[G.haven].name}».${lost.length?" Часть вещей осталась там.":""}${ally?` Союзник, клан ${CLANS[ally].name}, укрыл вас у себя до заката — и не задал ни одного вопроса.`:pack?" Псы подняли вой за минуту до облавы: вы ушли раньше, чем вышибли дверь.":" Статус −1."}`;
     addLog(`<b>Облава.</b> ${G.raided}`);
   }else{
     const r=G.R[tgt];if(r.order&&G.objSt[r.order.obj]&&G.objSt[r.order.obj].st==="taken")G.objSt[r.order.obj].st=OPEN_ST[r.order.obj];
@@ -1965,7 +1965,7 @@ function cqAct(a){const T=G.truth,S=G.objSt;
 function cqOutcome(out){const Q=G.CQ,D=CLANQ[Q.id];const s=cqStage();
   if(out.cqleave)return out;
   let text=cqFill(out.text);
-  if(out.flag)Q.flags[out.flag]=true;
+  if(out.flag)Q.flags[out.flag]=true;if(out.flag2)Q.flags[out.flag2]=true;
   if(out.pk)G.PK.trust[G.clan]+=out.pk;
   if(out.act)text+=cqAct(out.act);
   if(s&&s.timed)G.time=Math.max(G.time,COURT.to); // событие занимает всю ночь совета
@@ -2073,7 +2073,8 @@ function meetCheck(){
          {t:"Блефовать: «Князь передал это дело мне»",roll:true,ok:{text:"Он колеблется — и уходит. Этой ночью он вам не помешает.",meet:"bluffok"},fail:{text:"Он смеётся вам в лицо. «Посмотрим, что скажет Князь»",meet:"bluffbad"}},
          cqWon("bru")?{t:"Встать у него на пути",o:{text:"За вашей спиной из темноты выходят люди Ренаты. Он оценивает расклад — и отступает.",meet:"fightok"}}:
          {t:"Встать у него на пути",roll:true,ok:{text:"Короткая стычка в тени. Он отступает, зажимая рану.",alarm:1,meet:"fightok"},fail:{text:carry?"Он сильнее. То, что вы несли, теперь у него.":"Он отбрасывает вас к стене и уходит первым.",alarm:1,meet:"fightbad"}},
-         ...((G.allies||[]).includes("anarch")&&(G.used||{}).anarch!==G.night?[{t:"Позвать Шрама",o:{text:`Шрам выходит из темноты у него за спиной. Сородич клана ${C} оценивает расклад — и отступает, не сказав ни слова.`,meet:"anarch"}}]:[])]}};
+         ...((G.allies||[]).includes("anarch")&&(G.used||{}).anarch!==G.night?[{t:"Позвать Шрама",o:{text:`Шрам выходит из темноты у него за спиной. Сородич клана ${C} оценивает расклад — и отступает, не сказав ни слова.`,meet:"anarch"}}]:[]),
+         ...(cqWon("gan")&&(G.used||{}).pack!==G.night?[{t:"Свистнуть стаю",o:{text:"Из темноты выходят псы — десяток, молча. Сородич клана "+C+" медленно отступает.",meet:"pack"}}]:[])]}};
     return true}
   if(conflict){
     G.enc={h:G.pos,res:null,soc:r.clan,e:{t:`Сородич клана ${C}`,x:`${S.pact?"Ваш союзник":"Сородич клана "+C}. Он видит вас — и всё понимает: Князь дал вам обоим одно и то же дело. «Ну и что будем делать?»`,
@@ -2101,6 +2102,7 @@ function meetOutcome(kind,out){
   if(kind==="yield"){S.owe++;relAdd(r.clan,1);if(G.order&&G.order.carry&&o&&o.obj===G.order.obj){G.order.stage="late";G.order.carry=false;o.stage="deliver";o.carry=true;G.objSt[o.obj].by=r.clan}}
   if(kind==="bluffok")r.delay=8;
   if(kind==="anarch"){r.delay=8;G.used.anarch=G.night;relAdd(r.clan,-1)}
+  if(kind==="pack"){r.delay=8;G.used.pack=G.night}
   if(kind==="bluffbad"){G.PK.trust[G.clan]-=1;G.PK.rumors++;relAdd(r.clan,-1)}
   if(kind==="fightok"){r.delay=6;G.PK.rumors++;relAdd(r.clan,-2)}
   if(kind==="fightbad"){relAdd(r.clan,-1);if(G.order&&G.order.carry&&o&&o.obj===G.order.obj){G.order.stage="late";G.order.carry=false;o.stage="deliver";o.carry=true;G.objSt[o.obj].by=r.clan}}
@@ -2250,7 +2252,8 @@ function searchHere(){
 function canSearch(){return G.city.map[G.pos].t!=="ely"&&(G.searchedTonight||{})[G.pos]!==G.night}
 // рассвет вне убежища
 function allyHavenAt(k){const a=myAlly();return a&&G.R[a].haven===k?a:null}
-function caughtByDawn(){const h=G.city.map[G.pos];const cover=["cem","old","slum","ind","port","res","rail","market","theatre","hosp","uni"].includes(h.t);
+function caughtByDawn(){const h=G.city.map[G.pos];
+  if(G.clan==="gan"&&["park","edge","cem"].includes(h.t)){G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.dayNote=`Солнце встаёт, а вы уходите в землю «${h.name}», как в тёмную воду. День проходит в холоде и тишине. Голод +1.`;addLog(`<b>Рассвет.</b> ${G.dayNote}`);return}const cover=["cem","old","slum","ind","port","res","rail","market","theatre","hosp","uni"].includes(h.t);
   let p=cover?.5:.2;if(G.clan==="nos")p+=.25;if(G.hunger>=4)p-=.1;
   if(Math.random()<p){G.hunger=CONFIG.hungerMax-1;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);G.status=clamp(G.status-1,0,5);G.burned=true;
     G.dayNote=`Первый луч касается вашей руки, когда вы уже ломаете дверь подвала в «${h.name}». Весь день вы лежите в темноте среди труб, а солнце жжёт сквозь щели. Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1. Следующей ночью вы очнётесь только к полуночи.`;
@@ -2374,6 +2377,50 @@ function clanPassiveInit(){if(G.clan==="ven"){G.status=3;G.PK.trust[G.clan]=1}if
 function diceBonus(){const E=G.enc;if(!E)return 0;const t=G.city.map[E.h]?G.city.map[E.h].t:"";
   if(G.clan==="tor"&&["club","theatre"].includes(t))return 1;if(G.clan==="bru"&&E.meet)return 2;if(G.clan==="tre"&&(E.quest||E.cq))return 1;return 0}
 function passiveHtml(id){const p=CLAN_PASSIVE[id];return `<span class="hint"><b>${p.name}.</b> ${p.text}</span>`}
+
+
+/* ---------- Гангрел ---------- */
+CLANS.gan={name:"Гангрел",color:"#c4a35a",line:"Вы ближе к зверю, чем к людям. Город для вас — лес, в котором всё ещё можно охотиться."};
+RIVAL_LINES.gan="Гангрел сидит у открытого окна, подальше от свечей. От него пахнет дождём и сырой землёй.";
+FEEDER_CLUES.gan={pl:"Гангрелы",witness:"лохматый, в рваной куртке, двигался как зверь. Закончив, ушёл не по улице, а через забор — на четвереньках.",trace:"на кирпиче — следы когтей, а в грязи отпечаток то ли ботинка, то ли лапы"};
+CLAN_PASSIVE.gan={name:"Чутьё зверя",text:"Вы чуете цель поручения Князя, оказавшись в двух районах от неё. Если рассвет застал вас в парке, на пустыре или кладбище, вы уходите в землю и переживаете день."};
+CLANQ.gan={elder:"Ярослав Вой",title:"Чужая стая",perk:{name:"Стая",text:"Городские псы теперь ваши: они предупредят об облаве на убежище и раз за ночь выйдут из темноты, если Сородич преградит вам путь."},stages:[
+  {n:1,area:["park"],lead:"Примоген Гангрелов Ярослав Вой ждёт вас у воды: {HERE}.",t:"У пруда",
+   x:"Ярослав сидит на корточках над мёртвой собакой. Шея разорвана, крови нет. «Третья за неделю. Это не наши и не люди. В городе чужая стая. Найди след».",
+   c:[{t:"Взять след",o:{text:"Запах ведёт на окраину: {L}.",next:1}},
+      {t:"Спросить о старых договорах",o:{text:"«Город наш, пока мы его держим. Камарилья думает, что его держит Князь». След ведёт на окраину: {L}.",next:1,flag:"lore",time:1}},
+      {t:"Обернуться волком и обежать парк",roll:true,ok:{text:"Под лапами — мокрая земля, в ноздрях — чужой запах: кровь, бензин и ладан. Он ведёт на окраину: {L}.",next:1,flag:"wolf"},fail:{text:"Тело не слушается: зверь ещё не готов выйти. Приходите завтра.",hunger:1}}]},
+  {n:2,area:["edge","park"],lead:"Чужой след на окраине: {HERE}.",t:"Следы у гаражей",
+   x:"Босые следы в грязи, капли крови, на ржавых воротах — перевёрнутый крест, выцарапанный когтем.",
+   c:[{t:"Пойти по запаху",roll:true,ok:{text:"Запах приводит к их логову: {L}.",next:1,flag:"scent"},fail:{text:"Дождь смывает след. Вернитесь завтра."}},
+      {t:"Поговорить с бродячими псами",o:{text:"Вожак стаи долго нюхает ваши руки, потом ведёт за собой. Логово чужаков — {L}.",next:1,time:2,flag:"dogs",secret:"Бродячие псы окраин слушаются Гангрелов."}},
+      {t:"Запомнить знак и уйти",o:{text:"Перевёрнутый крест — знак Шабаша. Логово, судя по следам, — {L}.",next:1,secret:"В городе разведчики Шабаша."}}]},
+  {n:4,area:["cem","ind"],lead:"Логово чужой стаи: {HERE}.",t:"Логово",
+   x:"Склеп, свечи из чёрного воска, шестеро на полу — и в каждом больше зверя, чем в вас. Это стая Шабаша. Разведчики.",
+   c:[{t:"Подслушать их",roll:true,ok:{text:"Они готовят налёт — в ночь совета, когда весь двор будет в Элизиуме. Сначала окраина, потом город. Нужны свои: {L}.",next:1,flag:"plan"},fail:{text:"Один из них поворачивает голову в вашу сторону. Вы уходите.",alarm:1}},
+      {t:"Схватить отставшего",roll:true,ok:{text:"Вы утаскиваете одного в темноту. Он скалится и молчит, но клан развяжет ему язык. Налёт — в ночь совета. Нужны свои: {L}.",next:1,flag:"prisoner",hunger:1},fail:{text:"Он вырывается и уходит в стену, как в воду.",alarm:1,hunger:1}},
+      {t:"Оставить им свою метку",o:{text:"Вы метите вход в склеп по-звериному. Пусть знают, что город занят. Говорят, они придут в ночь совета. Нужны свои: {L}.",next:1,flag:"marked"}}]},
+  {n:5,area:["market","rail","port"],lead:"Собрать своих перед налётом: {HERE}.",t:"Сбор своих",
+   x:"Задворки, мусорные баки, ночь. Налёт Шабаша — в ночь совета. Держать окраину придётся вам.",
+   c:[{t:"Позвать бродячих псов",need:{flag:"dogs"},o:{text:"Псы приходят десятками и ложатся у ваших ног. Окраина будет под охраной. Место налёта — {L}.",next:1,flag:"pack"}},
+      {t:"Позвать того, кто вам должен",need:"help",o:{text:"Сородич, который вам должен, приходит, не задавая вопросов. Место налёта — {L}.",next:1,flag:"pack"}},
+      {t:"Купить у барыги ружьё",need:"item",o:{text:"Двустволка и коробка патронов с серебром. Шумно, но надёжно. Место налёта — {L}.",next:1,flag:"guns"}},
+      {t:"Идти одному",o:{text:"Волк охотится один. Место налёта — {L}.",next:1}}]},
+  {n:COUNCIL,timed:1,area:["edge"],lead:"Налёт Шабаша — {WHEN}, пока двор на совете: {HERE}.",t:"Ночь на окраине",
+   x:"Из темноты выходят шестеро. Тот, что впереди, улыбается: «Камарилья сидит на совете. А ты — один»",
+   c:[{t:"Спустить стаю",need:{flag:"pack"},o:{text:"Псы бросаются раньше, чем вы успеваете приказать. Шабаш уходит, оставив двоих. Окраина ваша.",next:1,flag:"held"}},
+      {t:"Встретить их ружьём",need:{flag:"guns"},o:{text:"Грохот на всю окраину. Серебро делает своё дело. Шабаш отступает, а полиция приезжает через десять минут.",next:1,flag:"held",alarm:2}},
+      {t:"Принять бой в облике зверя",roll:true,ok:{text:"Когти, клыки, кровь на снегу. Они не ждали такого. Шабаш уходит.",next:1,flag:"held",hunger:1},fail:{text:"Их слишком много. Вы уходите в землю, а Шабаш проходит в город. Утром найдут троих мёртвых бездомных.",next:1,alarm:2,hunger:2}},
+      {t:"Послать гонца в Элизиум",o:{text:"Шериф приводит людей Князя к полуночи. Шабаш уходит. Камарилья спасла окраину — и запомнила, кто её позвал.",next:1,flag:"held",flag2:"camarilla",status:1,pk:1}}]},
+  {n:COUNCIL+1,area:["park"],lead:"Ярослав ждёт вас у пруда: {HERE}.",t:"Снова у пруда",
+   x:fl=>fl.held?"Ярослав стоит по колено в воде и смотрит на вас иначе, чем неделю назад.":"Ярослав молчит. На окраине нашли тела. Он знает, что вы были там — и что этого не хватило.",
+   c:[{t:"Рассказать, как держали окраину",need:{flag:"held",noflag:"camarilla"},o:{text:"«Город наш, пока мы его держим. Ты держишь». Городские псы теперь ваши.",end:"win",status:1}},
+      {t:"Отдать пленника клану",need:{flag:"prisoner"},o:{text:"«Он заговорит». Ярослав уводит пленника в воду. Клан запомнит.",end:"win",status:2}},
+      {t:"Признаться, что позвали Камарилью",need:{flag:"camarilla"},o:{text:"Ярослав морщится: «Ты позвал Князя в наш лес». Но окраина цела. Псы пойдут за вами — неохотно.",end:"win"}},
+      {t:"Признать поражение",need:{noflag:"held"},o:{text:"«Стая, которая не удержала свой лес, — не стая». Ярослав уходит в воду, не оборачиваясь.",end:"fail"}}]},
+]};
+function ganSense(k){if(G.clan!=="gan"||!G.order||G.order.stage!=="go"||G.order.known)return;if(hexDist(k,G.order.k)<=2){G.order.known=G.order.k;G.seen.add(G.order.k);
+  addLog(`<b>Чутьё зверя.</b> Ветер приносит запах — вы чуете цель поручения: «${G.city.map[G.order.k].name}» ✦.`)}}
 
 /* ============================ СОХРАНЕНИЕ ============================ */
 const SAVE_KEY="before-the-dawn-city-v3";
