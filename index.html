@@ -112,7 +112,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.4 «Город»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.5 «Долгая ночь»</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -132,7 +132,7 @@ footer{margin-top:22px;max-width:1000px}
 <footer class="hint"><a href="intriga-v02.html" style="color:var(--dim)">Прошлая версия v0.2 «Ночная интрига»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
-   BEFORE THE DAWN · v0.3 «Город»
+   BEFORE THE DAWN · v0.5 «Долгая ночь»
    Большой гекс-город: генерация, прогулка, встречи, звук районов.
    Все тексты и числа — в разделе ДАННЫЕ.
    ===================================================================== */
@@ -140,7 +140,7 @@ footer{margin-top:22px;max-width:1000px}
 /* ============================ ДАННЫЕ ============================ */
 const CONFIG = {
   radius: 4,           // радиус гекс-поля: 4 → 61 гекс
-  nights: 5,
+  nights: 12,
   nightStart: 21*2,    // 21:00 в получасах
   nightEnd: 30*2,      // 06:00 следующего дня
   hungerMax: 5, alarmMax: 10,
@@ -357,11 +357,11 @@ const FILMERS={
   ghoul:{who:"Гуль",area:["club","old","biz"],mortal:true,
     fact:"Снимал смертный, от которого пахло чужой кровью. Чей-то гуль.",
     intro:"Квартира над шумной улицей. Гуль сидит у окна со стаканом чего-то тёмного. Он почувствовал вас раньше, чем вы вошли.",
-    reveal:"Под вашим взглядом он ломается: он служит клану {PATRON}, и снимать велел хозяин."},
+    reveal:"Под вашим взглядом он ломается: он служит Сородичу и снимал по приказу. Но хозяина он видел только через посредника — человека, который назначает встречи и платит."},
   kindred:{who:"Сородич",area:["old","club"],mortal:false,
     fact:"Снимал кто-то из нас. Сородич предал Маскарад сознательно.",
     intro:"Пустая комната, одна свеча. Сородич из клана {PATRON} ждёт вас так, будто знал, что вы придёте.",
-    reveal:"«Двор должен был увидеть, кто кормится на улицах, — говорит он. — Я лишь помог». Это клан {PATRON}."},
+    reveal:"«Двор должен был увидеть, кто кормится на улицах, — говорит он. — Я лишь помог». Зачем это было нужно его клану, он не скажет: «Спросите у того, кто передаёт мне письма»."},
 };
 const MOTIVES={
   accident:{text:"Случайность: видео снял прохожий, и оно просто разошлось по сети."},
@@ -389,7 +389,7 @@ function rollTruth(){
   if(f==="informant")ev=Math.random()<.7?"inquisition":"filmer";
   else if(f==="journalist")ev=Math.random()<.5?"filmer":"cloud";
   else ev=pick(["filmer","journalist","cloud"]);
-  return {filmer:f,feeder,motive,patron,evidence:ev,known:[]};
+  const rc=Math.random();return {filmer:f,feeder,motive,patron,evidence:ev,evOrig:ev,copies:rc<.3?0:rc<.75?1:2,known:[]};
 }
 function feederName(){const f=G.truth.feeder;return f==="neonate"?"неонат-одиночка, которого никто не признал":f==="prince"?"сам Князь":`клан ${CLANS[f].name}`}
 function tfill(t){const T=G.truth;return t.replace(/\{PATRON\}/g,T.patron?CLANS[T.patron].name:"—").replace(/\{FEEDER\}/g,T.feeder&&CLANS[T.feeder]?CLANS[T.feeder].name:feederName())}
@@ -460,7 +460,11 @@ const VERBS={
 // Что вы узнаёте о правде, выполнив приказ
 function revealFor(axis){
   const T=G.truth;
-  if(axis==="author"){learn("filmer",`видео снял ${FILMERS[T.filmer].who.toLowerCase()}${T.patron&&(T.filmer==="ghoul"||T.filmer==="kindred")?` (клан ${CLANS[T.patron].name})`:""}.`);learn("motive",tfill(MOTIVES[T.motive].text));return " "+tfill(FILMERS[T.filmer].reveal)}
+  if(axis==="author"){learn("filmer",`видео снял ${FILMERS[T.filmer].who.toLowerCase()}${T.filmer==="kindred"?` (клан ${CLANS[T.patron].name})`:""}.`);if(!T.patron)learn("motive",tfill(MOTIVES[T.motive].text));return " "+tfill(FILMERS[T.filmer].reveal)}
+  if(axis==="handler"){if(T.filmer==="informant"){learn("motive",MOTIVES.bait.text);if(G.loc&&G.loc.agents){G.seen.add(G.loc.agents)}if(!G.objSt.list)openThread("list");return " В его записной книжке — адрес бытовки на окраине и пометка: «список — в сейфе». Видео было их приманкой."}
+    learn("patron",`за видео стоит клан ${CLANS[T.patron].name}.`);learn("motive",tfill(MOTIVES[T.motive].text));
+    return ` Посредник работает на клан ${CLANS[T.patron].name}. ${T.motive==="frame"?tfill("Видео должно было подставить клан {FEEDER} перед Князем."):"Исходник им нужен, чтобы торговаться с двором."}`}
+  if(axis==="list"){learn("list",AXIS_TEXT.list()+".");return ` В папке — адреса. Подчёркнуты красным: ${(T.listedAll||[]).map(c=>c===G.clan?"ваше убежище":"убежище клана "+CLANS[c].name).join(" и ")}.`}
   if(axis==="evidence"){learn("filmer",`видео снял ${FILMERS[T.filmer].who.toLowerCase()} — это видно по метаданным исходника.`);return ` Перед этим вы успели заглянуть в метаданные: снимал ${FILMERS[T.filmer].who.toLowerCase()}.`}
   if(axis==="feeder"){learn("feeder",`в подворотне кормился ${feederName()}.`);return ""}
   if(axis==="agents"){if(T.motive==="bait"){learn("motive",MOTIVES.bait.text);return " В сводке написано: «Объект-приманка сработал». Видео — их наживка."}
@@ -507,7 +511,7 @@ const SIGNS=[
   ["На остановке листовка: «Видели подозрительного? Звоните».","У подъезда дежурит наряд полиции, хотя ничего не случилось.","На стене мелом нарисован перечёркнутый анх."],
   ["Улица пуста, хотя ещё нет полуночи.","Окна гаснут одно за другим, когда вы проходите мимо.","Вдалеке — вой сирен, и он приближается."],
 ];
-function threatLvl(){if(!G)return 0;return clamp((G.night-1)*2+Math.floor(G.alarm/2)+(G.order&&G.order.stage==="failed"?2:0)-(G.PK?G.PK.calm:0),0,12)}
+function threatLvl(){if(!G)return 0;return clamp(Math.floor((G.night-1)/2)+Math.floor(G.alarm/2)+Math.floor(G.heat||0)+(G.order&&G.order.stage==="failed"?2:0)-(G.PK?G.PK.calm:0),0,12)}
 function threatTier(){const t=threatLvl();return t>=9?3:t>=5?2:t>=2?1:0}
 
 /* ============================ КНЯЗЬ-СИСТЕМА И СОПЕРНИКИ ============================
@@ -532,7 +536,7 @@ function initWorld(){
   for(const c of G.rivals){G.PK.trust[c]=0;
     const cands=Object.values(G.city.map).filter(h=>!["river","ely"].includes(h.t)&&!used.has(h.k)&&hexDist(h.k,G.haven)>=3);
     const h=pick(cands);used.add(h.k);G.R[c]={clan:c,haven:h.k,pos:h.k,order:null,delay:0,met:0,known:[],hist:[]}}
-  G.hist=[];
+  G.hist=[];G.heat=0;G.fallen=[];initSide();
 }
 function computeLocations(){
   const T=G.truth;const loc={};
@@ -545,33 +549,27 @@ function setLoc(obj,k){G.loc[obj]=k;if(G.order&&G.order.obj===obj)G.order.k=k;fo
   if(obj==="author"&&G.truth.evidence==="filmer"&&G.objSt.evidence.st==="exists"){G.loc.evidence=k;if(G.order&&G.order.obj==="evidence")G.order.k=k;for(const r of Object.values(G.R))if(r.order&&r.order.obj==="evidence")r.order.k=k}}
 function pkLearn(axis){if(!G.PK.known.includes(axis))G.PK.known.push(axis)}
 // какие ходы вообще возможны при текущем положении дел
-function possibleMoves(){
-  const S=G.objSt,m=[];
-  if(S.author.st==="free")m.push(["author","silence"],...(OBJECTS.author.verbs().includes("bring")?[["author","bring"]]:[]));
-  if(S.author.st==="free"&&!FILMERS[G.truth.filmer].mortal)m.splice(m.findIndex(x=>x[1]==="silence"),1);
-  if(S.evidence.st==="exists")m.push(["evidence","destroy"],["evidence","bring"]);
-  if(S.feeder.st==="unknown")m.push(["feeder","find"],["feeder","cover"]);
-  if(S.agents.st==="unknown")m.push(["agents","follow"],["agents","decoy"]);
-  if(S.agents.st==="found")m.push(["agents","decoy"]);
-  return m.filter(x=>x[0]&&OBJECTS[x[0]].verbs().includes(x[1]));
-}
+function possibleMoves(){const m=[];for(const obj in G.objSt){const st=G.objSt[obj].st;let vs=[];if(st===OPEN_ST[obj])vs=OBJECTS[obj].verbs();else if(obj==="agents"&&st==="found")vs=["decoy"];for(const v of vs)m.push([obj,v])}return m}
 function scoreMove([obj,verb],taken){
   const P=PERSONAS[G.PK.persona];let s=P.w[verb]||1;const T=threatLvl();
   if(verb==="decoy")s+=T/6;if(verb==="cover")s+=T/5;if(verb==="destroy")s+=T/5;
   if(verb==="find"&&G.PK.known.includes("feeder"))s-=5;
-  if(G.truth.feeder==="prince"){if(verb==="find")s-=10;if(verb==="cover")s+=4;if(obj==="evidence"&&verb==="destroy")s+=2;if(obj==="evidence"&&verb==="bring")s-=2}
+  s+=({list:.8,detective:1.5,handler:1,witness:.5})[obj]||0;
+  if(obj==="list"&&G.raidAt&&G.raidAt-G.night<=1)s+=1.5;if(obj==="detective")s+=T/5;if(obj==="handler"&&!G.PK.known.includes("patron"))s+=1;
+  if(G.truth.feeder==="prince"){if(verb==="find")s-=10;if(obj==="witness"&&verb==="silence")s+=4;if(verb==="cover")s+=4;if(obj==="evidence"&&verb==="destroy")s+=2;if(obj==="evidence"&&verb==="bring")s-=2}
   if(taken.some(t=>t[0]===obj))s-=(P.double&&Math.random()<P.double)?0.5:6; // параноик может дать то же дело двоим
   return s+Math.random()*1.5;
 }
 function needsOrder(order){return !order||["done","failed","late"].includes(order.stage)}
 // Князь решает на закате: кому что поручить, издать ли указ, не пора ли суд
 function princeDusk(){
-  if(!G.loc)computeLocations();
+  if(!G.loc)computeLocations();worldDusk();
   const moves=possibleMoves();const T=threatLvl();
   // суд — когда Князь сочтёт, что пора
-  const cleanup=moves.filter(([o,v])=>o!=="feeder").length;
-  const ready=G.PK.known.includes("feeder")&&(G.PK.persona==="cruel"||!cleanup);
-  if(!G.PK.finalNight&&G.night>=4&&(ready||!moves.length||T>=9||G.night>=CONFIG.nights)){G.PK.finalNight=G.night;
+  const cleanup=moves.filter(([o,v])=>["evidence","list","detective","author"].includes(o)).length;
+  const K=G.PK.known,pers=G.PK.persona;
+  const ready=K.includes("feeder")&&(pers==="cruel"?true:pers==="cautious"?!cleanup:(!G.truth.patron||K.includes("patron")||G.night>=11))&&Math.random()<.45;
+  if(!G.PK.finalNight&&G.night>=9&&(ready||!moves.length||T>=11||G.night>=CONFIG.nights)){G.PK.finalNight=G.night;
     addLog(`<b>Гонец Князя:</b> двор собирается в Элизиуме сегодня с 23:00 до 01:00. Князь намерен закрыть дело. Отсутствие будет приравнено к признанию.`)}
   if(G.PK.finalNight)return;
   if(T>=6&&G.PK.curfew<2&&Math.random()<.45){G.PK.curfew++;G.PK.calm++;G.curfewNight=G.night;addLog(`<b>Указ Князя:</b> комендантский час. Охотиться этой ночью труднее, зато город немного остынет.`)}
@@ -617,13 +615,14 @@ function rivalAct(r){
 }
 function rivalReport(r){
   const o=r.order;o.stage="done";o.carry=false;const S=G.objSt[o.obj];S.st=DONE_ST[o.verb];S.by=r.clan;
-  G.PK.trust[r.clan]+=1;
-  let ax=(REPORT_AXES[o.obj]||{})[o.verb]||[];if(o.obj==="agents"&&G.truth.motive!=="bait")ax=[];
+  G.PK.trust[r.clan]+=1;resolved(o.obj,o.verb);
+  let ax=((REPORT_AXES[o.obj]||{})[o.verb]||[]).filter(axisValid);if(o.obj==="agents"&&G.truth.motive!=="bait")ax=[];if(o.obj==="handler"&&G.truth.filmer==="informant")ax=["motive"];
+  if(o.obj==="list"){G.truth.listed=[];G.raidAt=0}
   for(const a of ax){pkLearn(a);if(!r.known.includes(a))r.known.push(a)}
 }
 function rivalNear(k,d=1){return Object.values(G.R).find(r=>hexDist(r.pos,k)<=d)}
 function rivalsDawn(){for(const r of Object.values(G.R)){r.pos=r.haven;r.delay=0;const o=r.order;
-  if(o&&["go","deliver"].includes(o.stage)&&G.night>=o.until){o.stage="failed";o.carry=false;G.PK.trust[r.clan]-=1;if(G.objSt[o.obj].st==="taken")G.objSt[o.obj].st=o.obj==="evidence"?"exists":"free"}}}
+  if(o&&["go","deliver"].includes(o.stage)&&G.night>=o.until){o.stage="failed";o.carry=false;G.PK.trust[r.clan]-=1;if(G.objSt[o.obj].st==="taken")G.objSt[o.obj].st=OPEN_ST[o.obj]}}}
 // ---------- встречи ----------
 function conflictWith(r){const o=r.order,m=G.order;return o&&m&&o.obj===m.obj&&["go","deliver"].includes(o.stage)&&["go","deliver"].includes(m.stage)&&(o.verb!==m.verb||PERSONAS[G.PK.persona].double)}
 function meetCheck(){
@@ -635,7 +634,8 @@ function meetCheck(){
     G.enc={h:G.pos,res:null,meet:r.clan,e:{t:`Сородич клана ${C}`,x:carry?`Из темноты выходит Сородич клана ${C} — вы видели его в Элизиуме. Он смотрит на то, что вы несёте. «Отдайте это мне. По-хорошему».`:`Из темноты выходит Сородич клана ${C} — вы видели его в Элизиуме. «Это дело Князь поручил мне. Не путайтесь под ногами».`,
       c:[{t:carry?"Отдать":"Уступить дорогу",o:{text:carry?"Вы отдаёте ношу. Он уходит к Элизиуму, не оглядываясь.":"Вы отходите в сторону. Он уходит, не оглядываясь.",meet:"yield"}},
          {t:"Блефовать: «Князь передал это дело мне»",roll:true,ok:{text:"Он колеблется — и уходит. Этой ночью он вам не помешает.",meet:"bluffok"},fail:{text:"Он смеётся вам в лицо. «Посмотрим, что скажет Князь»",meet:"bluffbad"}},
-         {t:"Встать у него на пути",roll:true,ok:{text:"Короткая стычка в тени. Он отступает, зажимая рану.",alarm:1,meet:"fightok"},fail:{text:carry?"Он сильнее. То, что вы несли, теперь у него.":"Он отбрасывает вас к стене и уходит первым.",alarm:1,meet:"fightbad"}}]}};
+         {t:"Встать у него на пути",roll:true,ok:{text:"Короткая стычка в тени. Он отступает, зажимая рану.",alarm:1,meet:"fightok"},fail:{text:carry?"Он сильнее. То, что вы несли, теперь у него.":"Он отбрасывает вас к стене и уходит первым.",alarm:1,meet:"fightbad"}},
+         ...((G.allies||[]).includes("anarch")&&(G.used||{}).anarch!==G.night?[{t:"Позвать Шрама",o:{text:`Шрам выходит из темноты у него за спиной. Сородич клана ${C} оценивает расклад — и отступает, не сказав ни слова.`,meet:"anarch"}}]:[])]}};
   }else{
     G.enc={h:G.pos,res:null,meet:r.clan,e:{t:`Сородич клана ${C}`,x:`Навстречу идёт Сородич клана ${C}. Вы узнаёте его по Элизиуму. Он чуть замедляет шаг — то ли из вежливости, то ли чтобы вас рассмотреть.`,
       c:[{t:"Обменяться слухами",o:{text:"",meet:"trade"}},{t:"Кивнуть и разойтись",o:{text:"Вы киваете друг другу и расходитесь. Каждый запомнил, где видел другого."}}]}};
@@ -647,6 +647,7 @@ function meetOutcome(kind,out){
   const r=G.R[G.enc.meet];const o=r.order;
   if(kind==="yield"&&G.order&&G.order.carry&&o&&o.obj===G.order.obj){G.order.stage="late";G.order.carry=false;o.stage="deliver";o.carry=true;G.objSt[o.obj].by=r.clan}
   if(kind==="bluffok")r.delay=8;
+  if(kind==="anarch"){r.delay=8;G.used.anarch=G.night}
   if(kind==="bluffbad"){G.PK.trust[G.clan]-=1;G.PK.rumors++}
   if(kind==="fightok"){r.delay=6;G.PK.rumors++}
   if(kind==="fightbad"&&G.order&&G.order.carry&&o&&o.obj===G.order.obj){G.order.stage="late";G.order.carry=false;o.stage="deliver";o.carry=true;G.objSt[o.obj].by=r.clan}
@@ -656,7 +657,7 @@ function meetOutcome(kind,out){
   return out;
 }
 // донос: соперник рядом видел вашу неосторожность
-function maybeReport(){const r=rivalNear(G.pos,2);if(r&&Math.random()<.6){G.PK.trust[G.clan]-=1;G.PK.rumors++}}
+function maybeReport(){const r=rivalNear(G.pos,2);if(r&&Math.random()<(r.clan===G.sheriff?.9:.6)){G.PK.trust[G.clan]-=1;G.PK.rumors++}}
 // ---------- финальный суд ----------
 function verdictCard(){
   const V=G.verdict,P=G.prince;const head=`<span class="eyebrow">Элизиум · суд Князя</span>`;
@@ -684,6 +685,7 @@ function computeVerdict(){
       punish(T.patron,txt,"за подставу и измену Маскараду");txt.push(`Виновный в кормлении наказан мягче: его подставили.`)}
     else if(T.feeder==="neonate")txt.push("«Это был неонат-одиночка, без клана и без защиты». Его приведут на рассвете. Больше о нём никто не услышит.");
     else punish(T.feeder,txt,"за нарушение Маскарада");
+    if(K.includes("patron")&&T.motive==="blackmail")punish(T.patron,txt,"за шантаж двора исходником");
   }else if(T.feeder==="prince"&&!K.includes("feeder")){txt.push("Князь говорит долго и красиво, но имени так и не называет. «Дело закрыто. Виновный понесёт наказание в своё время». Вы знаете — или подозреваете, — почему он так спокоен.")}
   else{const all=[G.clan,...G.rivals];const scape=all.sort((a,b)=>G.PK.trust[a]-G.PK.trust[b])[0];
     txt.push("Князь так и не узнал, кто был в той подворотне. Но двору нужен виновный.");punish(scape,txt,"за то, что не справился и навлёк подозрения")}
@@ -692,7 +694,7 @@ function computeVerdict(){
   txt.push(`<span class="hint">Характер Князя в этой партии — ${PERSONAS[G.PK.persona].name}. Ваше доверие у него: ${G.PK.trust[G.clan]>0?"высокое":G.PK.trust[G.clan]<0?"низкое":"среднее"}${G.PK.rumors?`, до него дошло слухов о вас: ${G.PK.rumors}`:""}.</span>`);
   V.text=txt;
 }
-function punish(c,txt,why){if(c===G.clan){G.status=clamp(G.status-2,0,5);txt.push(`<b>Князь обвиняет ваш клан</b> ${why}. Статус −2.`)}else txt.push(`<b>Князь наказывает клан ${CLANS[c].name}</b> ${why}. Их место при дворе займут другие.`)}
+function punish(c,txt,why){if((G.fallen||[]).includes(c)){txt.push(`Князь называет клан ${CLANS[c].name} ${why.replace(/^за /,"виновным в ")} — но наказывать уже некого: Инквизиция успела первой.`);return}if(c===G.clan){G.status=clamp(G.status-2,0,5);txt.push(`<b>Князь обвиняет ваш клан</b> ${why}. Статус −2.`)}else txt.push(`<b>Князь наказывает клан ${CLANS[c].name}</b> ${why}. Их место при дворе займут другие.`)}
 function startVerdict(){if(G.time<46){addLog("Вы приходите в Элизиум рано и ждёте, пока соберётся двор.");G.time=46}G.phase="verdict";G.verdict={step:0,text:[]};render()}
 function finishGame(){G.phase="end";G.result="court";render()}
 function verdictMissed(){if(G.PK.finalNight===G.night&&G.phase==="walk"&&!G.verdict&&G.time>50){G.verdict={step:2,text:[]};G.status=clamp(G.status-2,0,5);computeVerdict();G.verdict.text.unshift("<b>Суд прошёл без вас.</b> Ваше отсутствие заметили все. Статус −2.");G.phase="verdict";render();return true}return false}
@@ -860,7 +862,7 @@ function chooseClan(id){
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
   G.haven=h.k;G.pos=h.k;reveal(h.k);G.visited.add(h.k);G.visitedTonight.add(h.k);G.seen.add("0,0");
-  G.prince=pick(PRINCES);G.rivals=shuffle(Object.keys(CLANS).filter(x=>x!==id)).slice(0,2);G.truth=rollTruth();initWorld();
+  G.prince=pick(PRINCES);G.rivals=shuffle(Object.keys(CLANS).filter(x=>x!==id)).slice(0,3);G.truth=rollTruth();initWorld();
   G.phase="walk";
   addLog(`<b>Ночь 1.</b> Вы просыпаетесь в своём убежище: «${h.name}». До рассвета — ${(CONFIG.nightEnd-G.time)/2} часов.`);
   focusCam(true);render();
@@ -875,6 +877,7 @@ function bfs(from,to){
 }
 function clickHex(k){
   if(G.phase!=="walk"||G.enc)return;
+  if(G.taxiMode){if(G.visited.has(k)&&k!==G.pos&&G.city.map[k].t!=="river")taxiTo(k);return}
   if(k===G.pos){G.sel=k;render();return}
   if(!G.seen.has(k)){G.sel=k;render();return}
   const p=bfs(G.pos,k);if(!p)return;
@@ -892,11 +895,13 @@ function walkStep(){
   focusCam();
   if(k==="0,0"&&G.night===COURT.night&&!G.courtDone&&G.time<=COURT.to){G.path=[];startCourt();return}
   if(k==="0,0"&&G.PK&&G.PK.finalNight===G.night&&!G.verdict&&G.time<=50){G.path=[];startVerdict();return}
+  if(k==="0,0"&&G.night===COUNCIL&&!G.councilDone&&G.time<=COURT.to){G.path=[];startCouncil();return}
   if(G.R&&meetCheck()){G.path=[];render();return}
   if(G.order&&G.order.stage==="deliver"&&G.order.carry){G.time+=1;if(G.R)rivalsAdvance(1);const busy=["club","res","market","theatre","rail"].includes(h.t);
     if(busy&&rng()<.3){G.alarm=clamp(G.alarm+1,0,CONFIG.alarmMax);addLog(`В «${h.name}» людно: вас видели с тем, что вы несёте. Тревога +1.`)}}
   if(G.order&&G.order.stage==="go"&&k===G.order.k){if(G.order.lock===G.night){addLog("Здесь сегодня слишком много внимания. Вернитесь завтра.")}else{G.path=[];G.order.known=k;startOrderScene();render();return}}
   if(G.order&&G.order.stage==="go"&&k!==G.order.k&&areaOf(G.order.obj).includes(h.t)&&!G.order.checked.includes(k)){G.path=[];G.order.checked.push(k);hintScene(h);render();return}
+  if(sideCheck(k)){G.path=[];render();return}
   if(threatLvl()>0&&rng()<threatLvl()*.012){const tier=SIGNS[Math.max(0,threatTier()-1)];addLog(`<i>${pick(tier)}</i>`)}
   if(G.order&&G.order.stage==="deliver"&&k==="0,0"){G.path=[];deliverOrder();render();return}
   if(checkCourt())return;
@@ -909,6 +914,7 @@ function walkStep(){
 }
 function checkCourt(){
   if(G.PK&&verdictMissed())return true;
+  if(G.PK)councilMissed();
   if(G.night===COURT.night&&!G.courtDone&&G.time>COURT.to){G.courtDone=true;G.status=clamp(G.status-2,0,5);
     addLog(`<b>Двор собрался без вас.</b> Князь ${G.prince.name} заметил ваше отсутствие. Статус −2.`);render();return false}
   return false;
@@ -922,9 +928,10 @@ function courtGive(id){
   const it=ITEMS[id];G.items=G.items.filter(x=>x!==id);G.status=clamp(G.status+it.value,0,5);G.court.gave=id;
   addLog(`При дворе вы подносите Князю: «${it.name}». ${it.value?`Статус +${it.value}.`:"Князь не впечатлён."}`);G.court.step=3;render();
 }
-function leaveCourt(){G.courtDone=true;G.phase="walk";G.court=null;G.time=Math.min(CONFIG.nightEnd,G.time+2);addLog("Двор расходится. Вы выходите в ночь.");setDistrictSound();render()}
+function leaveCourt(){if(G.court.mode==="council")G.councilDone=true;else G.courtDone=true;G.phase="walk";G.court=null;G.time=Math.min(CONFIG.nightEnd,G.time+2);addLog("Двор расходится. Вы выходите в ночь.");setDistrictSound();render()}
 function courtCard(){
   const c=G.court,P=G.prince;
+  if(c.mode==="council"&&c.step<2)return councilCard();
   const head=`<span class="eyebrow">Элизиум · двор Князя</span>`;
   if(c.step===0)return `<div class="enc">${head}<h2>Галерея Ровена</h2>
     <p>Свечи, картины в тяжёлых рамах, тихие голоса. У камина в кресле — Князь ${P.name}, клан ${P.clan}. Вдоль стен — Сородичи города, и вы впервые видите тех, кто ходил по этим улицам рядом с вами.</p>
@@ -970,14 +977,14 @@ function makeRumor(obj){
   const say={accident:"всё это — нелепая случайность",sensation:"журналиста кто-то навёл",bait:"Инквизиция сама сняла видео",frame:"кого-то из двора хотят подставить",blackmail:"кто-то из двора держит исходник для торга"}[m];
   return {text:`Говорят, ${say}.`,truth};
 }
-function openLetter(){G.order.stage="go";G.letterOpen=true;const o=OBJECTS[G.order.obj],v=verbText(G.order);addLog(`<b>Письмо Князя.</b> ${v.verb}: ${o.name.toLowerCase()}. ${v.order[G.order.obj]}`);render()}
+function openLetter(){G.order.stage="go";G.letterOpen=true;const o=OBJECTS[G.order.obj],v=verbText(G.order);addLog(`<b>Письмо Князя.</b> ${v.verb}: ${o.name.toLowerCase()}. ${ordText(G.order.verb,G.order.obj)}`);render()}
 function letterCard(){
   const o=OBJECTS[G.order.obj],v=verbText(G.order);
   if(G.order.stage==="sealed")return `<div class="enc"><span class="eyebrow">Закат · ночь ${G.night}</span><h2>Письмо на подушке</h2>
     <p>Пока вы спали, кто-то прошёл в убежище и оставил конверт из плотной бумаги. Сургуч с печатью Князя ${G.prince.name}.</p>
     <button class="primary" onclick="openLetter()">Сломать печать</button></div>`;
   return `<div class="enc"><span class="eyebrow">Поручение Князя · ${v.verb}</span><h2>${o.name}</h2>
-    <p><i>${G.PK&&G.PK.trust[G.clan]<0?"До меня дошли слухи о вашей неосторожности. Это поручение — ваш шанс их опровергнуть.":G.PK&&G.PK.trust[G.clan]>1?"Вы доказали, что вам можно доверять. Поэтому — снова вы.":pick(PRINCE_LETTER_OPEN)}</i></p><p>${o.fact()}</p><p><b>${v.order[G.order.obj]}</b></p>
+    <p><i>${G.PK&&G.PK.trust[G.clan]<0?"До меня дошли слухи о вашей неосторожности. Это поручение — ваш шанс их опровергнуть.":G.PK&&G.PK.trust[G.clan]>1?"Вы доказали, что вам можно доверять. Поэтому — снова вы.":pick(PRINCE_LETTER_OPEN)}</i></p><p>${o.fact()}</p><p><b>${ordText(G.order.verb,G.order.obj)}</b></p>
     <p class="hint">${G.order.rumor.text} Князь не уверен, правда ли это.</p>
     <p class="hint">Где именно — Князь не знает. Ищите в районах: ${areaOf(G.order.obj).map(t=>TYPES[t].n.toLowerCase()).join(", ")}. В неверных местах можно узнать, куда идти дальше.${v.deliver?" Потом — в Элизиум, к Князю.":""} Срок — до рассвета следующей ночи.</p>
     <button class="primary" onclick="G.phase='walk';render()">Выйти в ночь</button></div>`;
@@ -987,7 +994,7 @@ function orderCard(){
   const o=OBJECTS[G.order.obj],v=verbText(G.order);const st=G.order.stage;
   const p=bfs(G.pos,"0,0");
   return `<div class="card"><span class="eyebrow">Поручение Князя</span><h2>${v.verb}: ${o.name.toLowerCase()}</h2>
-    <p class="hint">${v.order[G.order.obj]}</p>
+    <p class="hint">${ordText(G.order.verb,G.order.obj)}</p>
     ${st==="go"?`<p class="hint">Где искать: ${areaOf(G.order.obj).map(t=>TYPES[t].n.toLowerCase()).join(", ")}. Проверено мест: ${G.order.checked.length}. Срок — до рассвета ${G.night>=(G.order.until||4)?"этой ночи":"следующей ночи"}.</p>
       ${G.order.hint?`<p>Последняя наводка: ${G.order.hint}</p>`:""}
       ${G.order.known?`<p>Вы знаете, где цель: «${G.city.map[G.order.known].name}» ✦</p>${G.pos===G.order.known?`<button class="primary" onclick="startOrderScene();render()">Заняться поручением</button>`:`<button onclick="clickHex('${G.order.known}')">Идти туда</button>`}`:""}`:""}
@@ -1021,20 +1028,26 @@ function hintScene(h){
   const lines={author:`Соседи шепчутся: тот, кого вы ищете, здесь не живёт, но его видели — он ушёл ${dir}.`,
     evidence:`Здесь пусто. Но кто-то видел, как похожую флешку несли ${dir}.`,
     agents:`Сторож видел машины без номеров. Они уезжали ${dir}.`,
-    feeder:`Бездомные говорят: здесь всё спокойно, а «та самая» подворотня — ${dir}.`};
+    feeder:`Бездомные говорят: здесь всё спокойно, а «та самая» подворотня — ${dir}.`,
+    witness:`Здесь его нет, но местные говорят: старик с бутылкой ушёл ${dir}.`,
+    handler:`Официант вспоминает человека с конвертами: тот ушёл ${dir}.`,
+    list:`Сторож видел машины без номеров. Они уезжали ${dir}.`,
+    detective:`В дежурке говорят: следователь сейчас ${dir}.`};
   o.hint=lines[o.obj];
   G.enc={h:h.k,res:{text:lines[o.obj],choice:"Поиски",fx:""},e:{t:"Здесь пусто",x:"",c:[]}};
   addLog(`<b>Поиски.</b> ${lines[o.obj]}`);
 }
 // Князю докладывают только то, о чём он спрашивал: остальное вы можете придержать до суда
 const REPORT_AXES={author:{bring:["filmer","motive"]},evidence:{bring:["filmer"]},feeder:{find:["feeder"]},agents:{follow:["motive"]}};
-function myAxesToPK(){const o=G.order;const ax=(REPORT_AXES[o.obj]||{})[o.verb]||[];const mine=G.truth.known.map(k=>k.axis);for(const a of ax)if(mine.includes(a))pkLearn(a)}
+function myAxesToPK(){const o=G.order;const ax=((REPORT_AXES[o.obj]||{})[o.verb]||[]).filter(axisValid);const mine=G.truth.known.map(k=>k.axis);for(const a of ax)if(mine.includes(a))pkLearn(a)}
 function deliverOrder(){
   const O=G.order;O.stage="done";O.carry=false;let st=2;let text;
-  const S=G.objSt[O.obj];S.st=DONE_ST[O.verb];S.by=G.clan;G.PK.trust[G.clan]+=1;myAxesToPK();
+  const S=G.objSt[O.obj];S.st=DONE_ST[O.verb];S.by=G.clan;G.PK.trust[G.clan]+=1;myAxesToPK();resolved(O.obj,O.verb);
   const P=`Князь ${G.prince.name} принимает вас без свидетелей.`;
   if(O.obj==="author")text=`${P} ${FILMERS[G.truth.filmer].who} стоит перед ним, не поднимая глаз. «Дальше — моя забота», — говорит Князь. Двор не забудет.`;
   else if(O.obj==="evidence")text=`${P} Он долго смотрит на флешку, потом кладёт её в огонь камина. «Двор не забудет».`;
+  else if(O.obj==="handler")text=`${P} Посредник стоит перед ним, сжимая шляпу. «Говори», — велит Князь. И тот говорит — долго. Вас отпускают задолго до конца.`;
+  else if(O.obj==="list"){G.truth.listed=[];G.raidAt=0;text=`${P} Он листает папку, и его палец останавливается на подчёркнутых адресах. «Этих предупредят до рассвета». Облав по этому списку не будет.`}
   else if(G.truth.feeder==="prince"){text=`${P} Вы называете то, что узнали. Князь молчит так долго, что гаснет свеча. «Вы хорошо поработали, — наконец говорит он. — Слишком хорошо. Об этом не узнает никто». Вы уходите живым и с ощущением, что теперь у Князя есть причина вас помнить.`;st=1}
   else text=`${P} Вы называете имя: ${feederName()}. «Этого достаточно», — говорит Князь, и в его голосе — приговор. Двор не забудет.`;
   G.status=clamp(G.status+st,0,5);
@@ -1050,9 +1063,11 @@ function endOrdersHtml(){
     ${Object.values(G.R||{}).map(r=>[...r.hist,...(r.order?[r.order]:[])].map(o=>`<li><b style="color:${CLANS[r.clan].color}">${CLANS[r.clan].name}</b> — ${vt(o)} — ${RES[o.stage]||o.stage}.</li>`).join("")).join("")}</ul>
     <h3>Правда этой партии</h3><ul>
     <li>Видео снял: ${FILMERS[T.filmer].who.toLowerCase()}${T.patron&&(T.filmer==="ghoul"||T.filmer==="kindred")?` (клан ${CLANS[T.patron].name})`:""}.</li>
-    <li>Кормился: ${feederName()}.</li><li>${tfill(MOTIVES[T.motive].text)}</li><li>${EVIDENCE[T.evidence].text}</li>
-    ${mine.filter(o=>o.rumor).map(o=>`<li>Слух в письме («${o.rumor.text}») был ${o.rumor.truth?"правдой":"ложью"}.</li>`).join("")}</ul>
-    <p class="hint">Вы сами докопались до ${T.known.filter(k=>k.axis!=="motive_not_bait").length} из 3 частей правды.</p>`;
+    <li>Кормился: ${feederName()}.</li><li>${tfill(MOTIVES[T.motive].text)}</li><li>${EVIDENCE[T.evOrig||T.evidence].text}</li>
+    ${mine.filter(o=>o.rumor).map(o=>`<li>Слух в письме («${o.rumor.text}») был ${o.rumor.truth?"правдой":"ложью"}.</li>`).join("")}
+    ${T.patron?`<li>За видео стоял клан ${CLANS[T.patron].name}.</li>`:""}${T.evOrig!==T.evidence||T.copies?`<li>Копий видео было: ${(T.evOrig!==T.evidence?1:0)+T.copies}.</li>`:""}
+    ${(G.fallen||[]).length?`<li>Инквизиция сожгла убежища: ${G.fallen.map(c=>"клан "+CLANS[c].name).join(", ")}.</li>`:""}</ul>
+    <p class="hint">Вы сами докопались до ${T.known.filter(k=>["filmer","feeder","motive","patron"].includes(k.axis)).length} из ${T.patron?4:3} частей правды.</p>`;
 }
 function goHome(){const p=bfs(G.pos,G.haven);if(p&&p.length){G.path=p;walkStep()}}
 function hunt(){
@@ -1076,11 +1091,12 @@ function chooseEnc(i){
   if(ch.roll){const n=G.enc&&G.enc.quest?(G.hunger>=4?1:2):(G.hunger>=4?2:3);dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
   apply(out);
   if(G.enc.meet&&out.meet)out=meetOutcome(out.meet,{...out});
+  if(G.enc.side)out=sideOutcome(out);
   if(G.enc.quest&&out.flee){const o=G.order;const opts=nbrs(o.k).filter(x=>!["river","ely"].includes(G.city.map[x].t));const n=opts.length?pick(opts):o.k;
     setLoc(o.obj,n);o.known=n;G.seen.add(n);o.hint=`${OBJ_WHO[o.obj]} — в «${G.city.map[n].name}», вы видели, куда унесли.`;out={...out,text:out.text+` Он скрывается в соседнем районе — «${G.city.map[n].name}». Догоняйте.`}}
   else if(G.enc.quest&&out.lock){G.order.lock=G.night;G.order.known=G.order.k;out={...out,text:out.text+" Сегодня здесь больше ничего не сделать — слишком много внимания. Вернитесь завтра."}}
   else if(G.enc.quest){const o=G.order,v=VERBS[o.verb];if(out.learn){const extra=revealFor(out.learn);if(extra)out={...out,text:out.text+extra}}
-    const S=G.objSt[o.obj];if(v.deliver){S.st=o.verb==="bring"?"taken":S.st;S.by=G.clan}else{S.st=DONE_ST[o.verb];S.by=G.clan;G.PK.trust[G.clan]+=1;myAxesToPK()}
+    const S=G.objSt[o.obj];if(v.deliver){S.st=o.verb==="bring"?"taken":S.st;S.by=G.clan}else{S.st=DONE_ST[o.verb];S.by=G.clan;G.PK.trust[G.clan]+=1;myAxesToPK();resolved(o.obj,o.verb)}
     if(v.deliver){o.carry=o.verb==="bring";o.stage="deliver";out={...out,text:out.text+" Теперь — в Элизиум, к Князю."}}else{o.stage="done";G.status=clamp(G.status+2,0,5);out={...out,text:out.text+" Поручение выполнено. Князь узнает об этом ещё до рассвета. Статус +2."}}}
   G.enc.res={text:out.text,dice,ok:out.ok,fx:fxText(out),choice:ch.t};
   addLog(`<b>${G.enc.e.t}.</b> ${ch.t}: ${out.text}${fxText(out)?" <span class='fx'>"+fxText(out)+"</span>":""}`);
@@ -1109,16 +1125,19 @@ function dawn(){
   if(!home){G.hunger=clamp(G.hunger+2,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm+1,0,CONFIG.alarmMax);addLog(`<b>Рассвет застаёт вас вне убежища.</b> Вы забиваетесь в подвал в «${G.city.map[G.pos].name}» и днём горите во сне. Голод +2, Тревога +1.`)}
   else addLog("<b>Рассвет.</b> Вы засыпаете в убежище за мгновение до первых лучей.");
   if(G.R)rivalsDawn();
-  if(G.order&&["go","deliver"].includes(G.order.stage)&&G.night>=(G.order.until||4)){G.PK.trust[G.clan]-=1;if(G.objSt[G.order.obj].st==="taken")G.objSt[G.order.obj].st=G.order.obj==="evidence"?"exists":"free";G.order.stage="failed";G.order.carry=false;G.status=clamp(G.status-1,0,5);addLog(`<b>Срок вышел.</b> Князь не получил того, что просил. Статус −1.`)}
+  if(G.order&&["go","deliver"].includes(G.order.stage)&&G.night>=(G.order.until||4)){G.PK.trust[G.clan]-=1;if(G.objSt[G.order.obj].st==="taken")G.objSt[G.order.obj].st=OPEN_ST[G.order.obj];G.order.stage="failed";G.order.carry=false;G.status=clamp(G.status-1,0,5);addLog(`<b>Срок вышел.</b> Князь не получил того, что просил. Статус −1.`)}
+  G.raided=null;if(G.PK)worldDawn();
   if(G.alarm>=CONFIG.alarmMax){G.phase="end";G.result="lost";render();return}
   if(G.night>=CONFIG.nights){G.phase="end";G.result="done";render();return}
   G.phase="day";render();
 }
 function nextNight(){
-  G.night++;G.time=CONFIG.nightStart;G.pos=G.haven;G.visitedTonight=new Set([G.haven]);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm-1,0,CONFIG.alarmMax);
-  G.phase="walk";addLog(`<b>Ночь ${G.night}.</b> Голод +1 после пробуждения. За день слухи немного улеглись: Тревога −1.`);
+  G.night++;G.time=CONFIG.nightStart;G.pos=G.haven;G.visitedTonight=new Set([G.haven]);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm-2,0,CONFIG.alarmMax);
+  G.phase="walk";addLog(`<b>Ночь ${G.night}.</b> Голод +1 после пробуждения. За день слухи немного улеглись: Тревога −2.`);
   if(G.night>=3)princeDusk();
   if(G.night===COURT.night)addLog(`<b>Гонец Князя:</b> сегодня двор собирается в Элизиуме с 23:00 до 01:00. Отсутствие будет замечено.`);
+  if(G.night===COUNCIL)addLog(`<b>Гонец Князя:</b> сегодня — совет двора в Элизиуме с 23:00 до 01:00. Князь назовёт Шерифа.`);
+  G.taxiMode=false;
   focusCam(true);setDistrictSound();render();
 }
 const reduceMotion=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1254,6 +1273,10 @@ function actionsCard(){
   return `<div class="card"><div class="row">
     ${G.pos!==G.haven?`<button class="${left<=t+1?"primary":""}" onclick="goHome()">Домой · ${t*30} мин</button>`:""}
     ${G.city.map[G.pos].t!=="ely"?`<button onclick="hunt()">Поохотиться · 1 ч</button>`:""}
+    ${BAR_T.includes(G.city.map[G.pos].t)?`<button onclick="lingerHere()">Посидеть ${BAR_NAME[G.city.map[G.pos].t]} · 1 ч</button>`:""}
+    ${G.city.map[G.pos].t!=="ely"&&!(G.searched||[]).includes(G.pos)?`<button onclick="searchHere()">Осмотреться · 1 ч</button>`:""}
+    ${G.pos===G.haven&&G.warned?`<button onclick="relocate()">Сменить убежище · 2 ч</button>`:""}
+    ${allyActions()}
     <button onclick="waitHere()">Переждать 30 мин</button>
     ${G.pos===G.haven?`<button onclick="G.time=CONFIG.nightEnd;dawn()">Лечь спать до рассвета</button>`:""}</div>
     <p class="hint">Нажмите на соседний район, чтобы сделать шаг, или на любой открытый — чтобы пройти туда маршрутом. Каждый шаг — 30 минут.${left<=t+1&&G.pos!==G.haven?' <b style="color:var(--blood)">Пора домой: до рассвета впритык.</b>':""}</p></div>`;
@@ -1271,6 +1294,10 @@ function bagCard(){
     ${G.items.length?`<ul>${G.items.map(id=>`<li>${ITEMS[id].name}</li>`).join("")}</ul>`:'<p class="hint">Пусто. Некоторые встречи дают вещи — их можно поднести Князю.</p>'}</div>`;
 }
 function summonsCard(){
+  if(G.night===COUNCIL&&!G.councilDone&&!G.enc){const p=bfs(G.pos,"0,0");const t=p?p.length:0;const late=G.time+t>COURT.to;
+    return `<div class="card intro"><span class="eyebrow">Вызов</span><h2>Совет двора</h2><p>Князь ${G.prince.name} собирает всех в Элизиуме с 23:00 до 01:00: он подведёт итоги недели и назовёт Шерифа. Отсутствие ударит по Статусу.</p>
+    ${G.pos==="0,0"?`<button class="primary" onclick="startCouncil()">Войти в галерею</button>`:`<button class="${late?"":"primary"}" onclick="clickHex('0,0')">Идти в Элизиум · ${t*30} мин</button>`}
+    ${late&&G.pos!=="0,0"?'<p class="hint" style="color:var(--blood)">Вы уже не успеваете к 01:00.</p>':""}</div>`}
   if(G.night!==COURT.night||G.courtDone||G.enc)return "";
   const p=bfs(G.pos,"0,0");const t=p?p.length:0;const late=G.time+t>COURT.to;
   return `<div class="card intro"><span class="eyebrow">Вызов</span><h2>Двор собирается в Элизиуме</h2>
@@ -1295,16 +1322,17 @@ function clanCard(){
 }
 function walkIntroCard(){
   return `<div class="card intro"><span class="eyebrow">Ночь первая</span><h2>Выйти в город</h2><p>Пройдитесь по городу. Узнайте его районы, людей и тайны. Каждый шаг — полчаса ночи. Встречи на улицах могут накормить вас, рассказать что-то важное — или поставить под угрозу Маскарад.</p>
-    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂), иначе день будет тяжёлым.</li><li>Некоторые встречи дают <b>предметы</b>. Сохраните их: завтра Князь созывает двор в Элизиуме, и там их можно поднести.</li></ul>
+    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂), иначе день будет тяжёлым.</li><li>Некоторые встречи дают <b>предметы</b>. Сохраните их: завтра Князь созывает двор в Элизиуме, и там их можно поднести.</li><li>В барах можно <b>посидеть</b>, в любом районе — <b>осмотреться</b>. Так находят слухи, тайники и сторонние истории. Их никто не принесёт вам сам.</li></ul>
+    <p class="hint">Партия — двенадцать ночей. Игра сохраняется сама: можно закрыть и вернуться.</p>
     <button class="primary" onclick="G.introDone=true;render()">Понятно</button></div>`;
 }
 function dayCard(){
-  return `<div class="card intro"><span class="eyebrow">День</span><h2>Вы спите</h2><p>${["Город живёт без вас: люди просыпаются, газеты печатают вчерашнее, полиция пишет рапорты.","Днём по городу ездят патрули чаще обычного. В утренних новостях — короткий сюжет о «странном нападении».","Сквозь сон вы слышите сирены. Кто-то стучит в двери соседей и задаёт вопросы.","Днём город не спит из-за вас: облавы, листовки, люди в штатском. Ночь будет тесной."][threatTier()]}</p>
+  return `<div class="card intro"><span class="eyebrow">День</span><h2>Вы спите</h2><p>${["Город живёт без вас: люди просыпаются, газеты печатают вчерашнее, полиция пишет рапорты.","Днём по городу ездят патрули чаще обычного. В утренних новостях — короткий сюжет о «странном нападении».","Сквозь сон вы слышите сирены. Кто-то стучит в двери соседей и задаёт вопросы.","Днём город не спит из-за вас: облавы, листовки, люди в штатском. Ночь будет тесной."][threatTier()]}</p>${G.raided?`<p><b>Облава.</b> ${G.raided}</p>`:""}
     <div class="row"><button class="primary" onclick="nextNight()">Ночь ${G.night+1}</button></div></div>`;
 }
 function endCard(){
   const tot=Object.keys(G.city.map).length;
-  return `<div class="card intro"><span class="eyebrow">${G.result==="lost"?"Конец":G.result==="court"?"Дело закрыто":"Пять ночей прошло"}</span><h2>${G.result==="lost"?"Маскарад рухнул":G.result==="court"?"Суд Князя окончен":"Вы узнали свой город"}</h2>${G.verdict&&G.verdict.text.length?G.verdict.text.map(t=>`<p>${t}</p>`).join(""):""}
+  return `<div class="card intro"><span class="eyebrow">${G.result==="lost"?"Конец":G.result==="court"?"Дело закрыто":"Двенадцать ночей прошло"}</span><h2>${G.result==="lost"?"Маскарад рухнул":G.result==="court"?"Суд Князя окончен":"Вы узнали свой город"}</h2>${G.verdict&&G.verdict.text.length?G.verdict.text.map(t=>`<p>${t}</p>`).join(""):""}
     <p>Статус при дворе: <b>${G.status} из 5</b>. Открыто районов: <b>${G.visited.size} из ${tot}</b>. Тайн: <b>${G.secrets.length}</b>. Тревога: ${G.alarm}/${CONFIG.alarmMax}.</p>
     ${endOrdersHtml()}
     <div class="row"><button class="primary" onclick="newCity()">Новый город</button><button onclick="restartSame()">Этот же город заново</button></div></div>`;
@@ -1316,20 +1344,425 @@ function render(){
   let side="";
   if(G.phase==="gen"||G.phase==="built")side=genCard();
   else if(G.phase==="clan")side=clanCard();
-  else if(G.phase==="walk"){side=(G.enc?encCard():"")+(!G.introDone&&!G.enc?walkIntroCard():"")+summonsCard()+summonsFinalCard()+orderCard()+hereCard()+actionsCard()+bagCard()+journalCard()}
+  else if(G.phase==="walk"){side=(G.enc?encCard():"")+(!G.introDone&&!G.enc?walkIntroCard():"")+summonsCard()+summonsFinalCard()+orderCard()+hereCard()+actionsCard()+storiesCard()+bagCard()+journalCard()}
   else if(G.phase==="court")side=courtCard()+bagCard();
   else if(G.phase==="letter")side=letterCard()+bagCard();
   else if(G.phase==="verdict")side=verdictCard();
-  else if(G.phase==="day")side=dayCard()+bagCard()+journalCard();
-  else if(G.phase==="end")side=endCard()+journalCard();
+  else if(G.phase==="day")side=dayCard()+storiesCard()+bagCard()+journalCard();
+  else if(G.phase==="end")side=endCard()+storiesCard()+journalCard();
   $("#side").innerHTML=side;
   $("#zoom").hidden=!G.clan;
   document.querySelectorAll("#zoom button").forEach(b=>b.classList.toggle("on",b.dataset.z===G.zoom));
   drawFog();drawMarks();save();
 }
 
+/* ============================ ДОЛГАЯ ИСТОРИЯ: нити дела ============================
+   Дело разрастается: появляются свидетель, посредник, следователь, список убежищ, копии видео.
+   Нити открываются по ходу партии, Князь раздаёт их как поручения. Незакрытые нити греют город. */
+const OPEN_ST={author:"free",evidence:"exists",feeder:"unknown",agents:"unknown",witness:"free",handler:"free",list:"exists",detective:"free"};
+EVIDENCE.copy={area:["biz","uni","club","gov"],text:"Копия исходника всплыла снова.",intro:"Ноутбук на чужом столе, экран светится в темноте. На рабочем столе — файл с тем самым видео и подписью «оригинал, не удалять»."};
+Object.assign(OBJECTS,{
+  witness:{name:"Свидетель из подворотни",area:()=>["slum","market","rail","old"],movable:true,
+    fact:()=>"По городу ходит бездомный, который клянётся, что видел ту ночь в подворотне своими глазами. Рассказывает каждому, кто нальёт.",
+    verbs:()=>["find","silence"],
+    intro:()=>"Картонные коробки у тёплой решётки. Старик в трёх куртках поднимает на вас мутные глаза: «Я видел. Я всё видел»."},
+  handler:{get name(){return G&&G.truth&&G.truth.filmer==="informant"?"Куратор Инквизиции":"Посредник"},
+    area:()=>G.truth.filmer==="informant"?["biz","gov","rail"]:["club","old","theatre"],movable:true,
+    fact:()=>G.truth.filmer==="informant"?"У того, кто снимал, был куратор. Он встречается со своими людьми в людных местах и никогда не задерживается надолго.":"Тому, кто снимал, кто-то передавал письма и деньги. Посредника видели в клубах и в старом городе.",
+    verbs:()=>G.truth.filmer==="informant"?["follow","silence"]:["follow","bring"],
+    intro:()=>G.truth.filmer==="informant"?"Столик у окна, остывший кофе, газета, которую никто не читает. Человек в сером пальто смотрит на часы каждые две минуты.":"Отдельный кабинет за тяжёлой шторой. Мужчина с аккуратными руками пересчитывает конверты. По глазам видно: он давно служит не людям."},
+  list:{name:"Список убежищ",area:()=>AGENT_AREA,movable:false,
+    fact:()=>"У Инквизиции есть список адресов — дневных убежищ Сородичей. Пока он у них, кто-то из нас может не проснуться.",
+    verbs:()=>["destroy","bring"],
+    intro:()=>"Сейф в углу бытовки, рядом — карта с булавками. Внутри — папка с адресами. Некоторые подчёркнуты красным."},
+  detective:{name:"Следователь",area:()=>["gov","hosp","res"],movable:true,
+    fact:()=>"Следователь полиции связал странные нападения в одно дело. Он ещё не верит в вампиров, но уже близко.",
+    verbs:()=>["silence","decoy"],
+    intro:()=>"Кабинет с пробковой доской: фотографии, красные нитки, вырезки из газет. Следователь спит прямо за столом, обняв папку."},
+});
+OBJECTS.evidence.fact=(f=>()=>G.truth.evidence==="copy"?"Исходник уничтожен, но в сети снова всплыло видео. Значит, была копия — где-то в деловом квартале, университете, клубах или при мэрии.":f())(OBJECTS.evidence.fact);
+const addV=(verb,obj,order,c)=>{VERBS[verb].order[obj]=order;VERBS[verb].c[obj]=c};
+addV("find","witness","Найдите бездомного, который видел ту ночь, и узнайте, что именно он видел. Доложите мне.",
+  [{t:"Налить и выслушать",o:{text:"Он пьёт и рассказывает: {WITNESS} Вам этого достаточно — это {FEEDERNAME}.",time:1,learn:"feeder"}},
+   {t:"Заглянуть в его память",roll:true,ok:{text:"В его памяти та ночь — как старая плёнка: {WITNESS} Это {FEEDERNAME}.",learn:"feeder"},fail:{text:"Старик вырывается и с криком убегает в темноту."}}]);
+addV("silence","witness","Бездомный, который видел ту ночь, болтает слишком много. Пусть замолчит.",
+  [{t:"Стереть ему ту ночь",roll:true,ok:{text:"Старик моргает и забывает, о чём говорил. Завтра он будет рассказывать про летающие тарелки."},fail:{text:"Память не поддаётся. Старик в ужасе бросается прочь."}},
+   {t:"Отправить его подальше из города",o:{text:"Билет на утреннюю электричку, деньги на месяц и строгий взгляд. Он уезжает.",time:2}}]);
+addV("follow","handler",()=>G.truth.filmer==="informant"?"Узнайте, с кем встречается куратор Инквизиции и что они готовят.":"Проследите за посредником и узнайте, на кого он работает.",
+  [{t:"Идти следом",roll:true,ok:{text:"Вы держитесь в двух кварталах позади. Он приводит вас туда, куда должен был.",learn:"handler"},fail:{text:"Он оглядывается на перекрёстке и исчезает в толпе."}},
+   {t:"Заглянуть в его бумаги",o:{text:"Пока он отвлекается, вы листаете его записную книжку.",time:1,learn:"handler"}}]);
+addV("bring","handler","Приведите ко мне посредника. Живым — у меня к нему вопросы.",
+  [{t:"Убедить пойти с вами",roll:true,ok:{text:"Он понимает, что выбора нет, и молча надевает пальто.",learn:"handler"},fail:{text:"Он опрокидывает стол и бросается к чёрному ходу."}},
+   {t:"Увести силой",o:{text:"Шум, разбитый бокал, чужие взгляды — но посредник теперь с вами.",alarm:2,learn:"handler"}}]);
+addV("silence","handler","У того, кто снимал, есть куратор из Инквизиции. Он не должен вспомнить, кого искал в этом городе.",
+  [{t:"Стереть ему память",roll:true,ok:{text:"Его взгляд стекленеет. Он забудет имена своих людей и то, что искал в этом городе."},fail:{text:"Он сопротивляется — их этому учат. Вскакивает и уходит, оглядываясь."}},
+   {t:"Подбросить ему ложный приказ",o:{text:"В его газете теперь записка с новым адресом и подписью, которой он поверит. До рассвета он уезжает туда.",time:2}}]);
+addV("destroy","list","Найдите список убежищ, который составила Инквизиция, и уничтожьте его.",
+  [{t:"Сжечь папку на месте",roll:true,ok:{text:"Бумага горит быстро. Адресов больше нет — по крайней мере, на бумаге.",learn:"list"},fail:{text:"За стеной шаги. Вы успеваете уйти, но папка осталась в сейфе."}},
+   {t:"Поджечь всю бытовку",o:{text:"Пламя видно с соседних улиц. Список сгорел вместе со всем остальным.",alarm:2,learn:"list"}}]);
+addV("bring","list","Добудьте список убежищ и принесите мне. Я хочу знать, кого они нашли.",
+  [{t:"Вынести тихо",roll:true,ok:{text:"Папка у вас под пальто.",learn:"list"},fail:{text:"Скрипит половица, в соседней комнате загорается свет."}},
+   {t:"Забрать вместе с сейфом",o:{text:"Сейф тяжёлый, а шум — ещё тяжелее. Но список у вас.",alarm:2,learn:"list"}}]);
+addV("silence","detective","Следователь связал нападения в одно дело. Это дело должно развалиться.",
+  [{t:"Стереть ему версию",roll:true,ok:{text:"Утром он проснётся уверенным, что всё это — разные банды. Нитки на доске покажутся ему глупостью."},fail:{text:"Он просыпается раньше, чем вы закончили, и хватается за кобуру."}},
+   {t:"Выкрасть папку с делом",o:{text:"Папка исчезает. Без неё у него только догадки, а догадки начальству не нужны.",time:1}}]);
+addV("decoy","detective","Следователь копает слишком глубоко. Дайте ему другого подозреваемого.",
+  [{t:"Подбросить улики на банду из порта",o:{text:"Нож, кровь, чужие отпечатки. Утром у него будет подозреваемый — живой, человек и очень удобный.",time:1}},
+   {t:"Внушить ему ложную версию",roll:true,ok:{text:"Он вдруг «понимает»: это был сектант с кладбища. Новая нитка на доске уводит прочь от вас."},fail:{text:"Он трясёт головой, будто отгоняя муху, и смотрит прямо на вас."}}]);
+VERBS.bring.order.evidence=(s=>()=>G.truth.evidence==="copy"?"Видео снова всплыло в сети — значит, была копия. Найдите её и принесите мне.":s)(VERBS.bring.order.evidence);
+VERBS.destroy.order.evidence=(s=>()=>G.truth.evidence==="copy"?"Видео снова всплыло в сети. Найдите копию и уничтожьте — на этот раз окончательно.":s)(VERBS.destroy.order.evidence);
+function ordText(verb,obj){const t=VERBS[verb].order[obj];return typeof t==="function"?t():t}
+OBJ_WHO.witness="Старик";OBJ_WHO.handler="Посредник";OBJ_WHO.detective="Следователь";OBJ_WHO.list="Папка";
+Object.assign(REPORT_AXES,{witness:{find:["feeder"]},handler:{bring:["patron","motive"],follow:["patron","motive"]},list:{bring:["list"]}});
+AXIS_TEXT.patron=()=>`за видео стоит клан ${CLANS[G.truth.patron].name}`;
+AXIS_TEXT.list=()=>`в списке Инквизиции были убежища: ${(G.truth.listedAll||[]).map(c=>c===G.clan?"ваше":"клана "+CLANS[c].name).join(", ")}`;
+function axisValid(a){return a!=="patron"||!!G.truth.patron}
+const THREAD_NEWS={
+  witness:"<b>Слухи:</b> в трущобах болтают про бездомного, который «видел вампира». Пока над ним смеются.",
+  handler:"<b>Слухи:</b> говорят, Князь интересуется, кто платил тому, кто снимал.",
+  detective:"<b>Новости:</b> в вечернем выпуске — следователь, который «связал серию нападений». Его лицо показывают уже второй вечер.",
+  list:"<b>Шёпот в Элизиуме:</b> у Инквизиции есть список. Список адресов, где Сородичи спят днём.",
+  copy:"<b>Видео снова в сети.</b> Кто-то перезалил его с подписью «они удаляют правду». Значит, была копия.",
+};
+const RAID_SIGNS=["Под дверью вашего убежища — свежий окурок. Вы не курите.","Соседка говорит, что вами интересовался «человек из газовой службы».","На стене напротив вашего убежища мелом нарисован маленький крестик.","Утром у вашего подъезда дважды проезжала одна и та же машина."];
+function spotFor(a){let c=Object.values(G.city.map).filter(h=>a.includes(h.t)&&h.k!==G.haven&&h.k!=="0,0");if(!c.length)c=Object.values(G.city.map).filter(h=>!["ely","river"].includes(h.t)&&h.k!==G.haven);return pick(c).k}
+function openThread(obj){
+  G.objSt[obj]={st:OPEN_ST[obj]};
+  if(obj==="list"){G.loc.list=G.loc.agents;const all=shuffle([G.clan,...G.rivals]).slice(0,2);G.truth.listed=all;G.truth.listedAll=[...all];G.raidAt=G.night+1}
+  else G.loc[obj]=spotFor(OBJECTS[obj].area());
+  addLog(THREAD_NEWS[obj]);
+}
+// на закате: какие нити открылись
+function worldDusk(){
+  const S=G.objSt,T=G.truth,n=G.night;if(!G.loc)computeLocations();
+  if(!S.witness&&n>=4&&(n>=5||Math.random()<.5))openThread("witness");
+  if(!S.handler&&["informant","ghoul","kindred"].includes(T.filmer)&&(S.author.st!=="free"||G.PK.known.includes("filmer")||n>=7))openThread("handler");
+  if(!S.detective&&(threatLvl()>=4||n>=6))openThread("detective");
+  if(!S.list&&(S.agents.st==="found"||n>=5))openThread("list");
+  if(G.copyAt&&n>=G.copyAt){G.copyAt=0;T.copies--;T.evidence="copy";S.evidence={st:"exists"};G.loc.evidence=spotFor(EVIDENCE.copy.area);G.heat=clamp((G.heat||0)+1,0,8);addLog(THREAD_NEWS.copy)}
+  if(G.raidAt&&S.list&&S.list.st==="exists"&&T.listed.includes(G.clan)&&G.raidAt-n<=1){G.warned=true;addLog(`<i>${pick(RAID_SIGNS)}</i>`)}
+}
+const RES_HEAT={evidence:1.5,detective:2,witness:.5,list:1,agents:1.5,author:1,handler:.5,feeder:.5};
+function resolved(obj,verb){const S=G.objSt[obj];if(!S||S.res)return;
+  if(obj==="agents"&&verb==="follow")return;
+  S.res=true;G.heat=clamp((G.heat||0)-(RES_HEAT[obj]||0),0,8);
+  if(obj==="evidence"&&G.truth.copies>0)G.copyAt=G.night+2;
+  if(obj==="list")G.raidAt=0;
+  if(obj==="agents"&&verb==="decoy"&&G.raidAt)G.raidAt+=3;
+}
+// на рассвете: незакрытые нити греют город, Инквизиция может нагрянуть
+function worldDawn(){
+  const S=G.objSt;let h=G.heat||0;
+  if(S.evidence.st==="exists"&&G.night>=3)h+=.5;
+  if(S.detective&&S.detective.st==="free")h+=.5;
+  if(S.witness&&S.witness.st==="free")h+=.25;
+  if(["unknown","found"].includes(S.agents.st)&&G.night>=3)h+=.25;
+  G.heat=clamp(h,0,8);
+  if(G.raidAt&&G.night>=G.raidAt&&S.list&&S.list.st==="exists")raid();
+}
+function raid(){
+  const T=G.truth;const tgt=T.listed.find(c=>c===G.clan||G.R[c]);G.raidAt=G.night+3;
+  if(!tgt){G.raidAt=0;return}
+  T.listed=T.listed.filter(c=>c!==tgt);if(!T.listed.length)G.raidAt=0;G.heat=clamp((G.heat||0)+1.5,0,8);
+  if(tgt===G.clan){
+    const old=G.city.map[G.haven].name;moveHaven(4);G.status=clamp(G.status-1,0,5);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);
+    const lost=G.items.splice(Math.ceil(G.items.length/2));
+    G.raided=`Днём вас будит грохот: дверь убежища в «${old}» вышибают. Запах бензина, крики, лучи фонарей. Вы уходите через подвалы, обжигаясь о каждую щель света. Новое убежище — «${G.city.map[G.haven].name}».${lost.length?" Часть вещей осталась там.":""} Статус −1.`;
+    addLog(`<b>Облава.</b> ${G.raided}`);
+  }else{
+    const r=G.R[tgt];if(r.order&&G.objSt[r.order.obj]&&G.objSt[r.order.obj].st==="taken")G.objSt[r.order.obj].st=OPEN_ST[r.order.obj];
+    delete G.R[tgt];G.rivals=G.rivals.filter(c=>c!==tgt);(G.fallen=G.fallen||[]).push(tgt);
+    G.raided=`Днём Инквизиция вломилась в убежище клана ${CLANS[tgt].name}. Сородич клана ${CLANS[tgt].name} больше не проснётся. Двор потрясён: список у них был настоящий.`;
+    addLog(`<b>Облава.</b> ${G.raided}`);
+  }
+}
+function moveHaven(maxD){
+  const used=new Set([G.haven,"0,0",...Object.values(G.R).map(r=>r.haven)]);
+  let c=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&!used.has(h.k)&&hexDist(h.k,G.haven)<=maxD);
+  if(!c.length)c=Object.values(G.city.map).filter(h=>!["river","ely"].includes(h.t)&&!used.has(h.k));
+  const h=pick(c);G.haven=h.k;reveal(h.k);G.visited.add(h.k);
+  if(G.truth.listed)G.truth.listed=G.truth.listed.filter(x=>x!==G.clan);G.warned=false;
+}
+function relocate(){const from=G.city.map[G.haven].name;moveHaven(3);G.pos=G.haven;G.time=Math.min(CONFIG.nightEnd,G.time+4);if(G.R)rivalsAdvance(4);
+  addLog(`<b>Вы меняете убежище.</b> Вещи — в сумку, окна — заколотить. Из «${from}» вы перебираетесь в «${G.city.map[G.haven].name}». Если кто-то и следил за старым адресом, теперь он следит за пустотой.`);focusCam();render()}
+
+/* ---------- Совет двора: середина партии ---------- */
+const COUNCIL=6;
+function startCouncil(){if(G.time<COURT.from){addLog("Вы приходите в Элизиум рано и ждёте, пока соберётся двор.");G.time=COURT.from}
+  G.phase="court";G.court={step:0,gave:null,mode:"council"};appointSheriff();render()}
+function appointSheriff(){if(G.sheriff)return;const all=[G.clan,...G.rivals];G.sheriff=all.sort((a,b)=>G.PK.trust[b]-G.PK.trust[a]+(Math.random()-.5)*.5)[0];
+  if(G.sheriff===G.clan){G.status=clamp(G.status+1,0,5);addLog("<b>Князь назначил вас Шерифом.</b> Теперь вас слушают — и за вами следят. Статус +1.")}
+  else addLog(`<b>Шерифом назначен клан ${CLANS[G.sheriff].name}.</b> Теперь его доносы Князь слушает внимательнее.`)}
+function councilMissed(){if(G.night===COUNCIL&&!G.councilDone&&G.time>COURT.to){G.councilDone=true;G.status=clamp(G.status-1,0,5);G.PK.trust[G.clan]-=1;appointSheriff();addLog("<b>Совет прошёл без вас.</b> Князь отметил ваше отсутствие. Статус −1.")}}
+function councilCard(){
+  const c=G.court,P=G.prince;const head=`<span class="eyebrow">Элизиум · совет двора</span>`;
+  if(c.step===0){const k=G.PK.known.filter(a=>AXIS_TEXT[a]);const fallen=(G.fallen||[]).map(x=>CLANS[x].name);const T=threatLvl();
+    return `<div class="enc">${head}<h2>Совет двора</h2><p>Прошла неделя с тех пор, как видео попало в сеть. Свечи те же, лица — нет: многие смотрят друг на друга так, будто уже выбирают, кого отдать.</p>
+    ${fallen.length?`<p>Кресла клана ${fallen.join(" и ")} пусты. Князь не говорит о них ни слова, и от этого ещё страшнее.</p>`:""}
+    <p>«${T>=7?"Город горит у нас под ногами. Ещё неделя — и прятаться будет негде.":T>=4?"Город неспокоен. Это не конец, а только начало.":"Пока мы держимся. Это не значит, что можно расслабиться."}»</p>
+    <p>«Вот что я знаю»:</p>${k.length?`<ul>${k.map(a=>`<li>${AXIS_TEXT[a]()}</li>`).join("")}</ul>`:"<p><i>«…меньше, чем хотелось бы»</i>.</p>"}
+    <button class="primary" onclick="courtNext()">Дальше</button></div>`}
+  if(c.step===1){const me=G.sheriff===G.clan;const rum=G.PK.rumors>=2&&!me;
+    return `<div class="enc">${head}<h2>Шериф</h2><p>«Мне нужен тот, кто будет держать этот город, пока я решаю, что с ним делать». Князь ${P.name} обводит зал взглядом.</p>
+    <p>${me?"Его взгляд останавливается на вас. «Шериф». Зал выдыхает. Половина смотрит с завистью, половина — с расчётом.":`«Клан ${CLANS[G.sheriff].name}». Сородич клана ${CLANS[G.sheriff].name} склоняет голову. Теперь его слово весит больше вашего.`}</p>
+    ${rum?`<p>И потом — при всех: «А до меня доходят слухи о неосторожности клана ${CLANS[G.clan].name}». Пара голов поворачивается к вам.</p>`:""}
+    <button class="primary" onclick="${rum?"G.status=clamp(G.status-1,0,5);addLog('Князь при всех упрекнул вас за слухи. Статус −1.');":""}courtNext()">Дальше</button></div>`}
+  return null;
+}
+
+/* ============================ ЖИЗНЬ В ГОРОДЕ: посидеть, осмотреться ============================ */
+const BAR_T=["club","theatre","market","rail","old","port"];
+const BAR_NAME={club:"в баре",theatre:"в буфете театра",market:"в рюмочной у рынка",rail:"в привокзальном кафе",old:"в погребке",port:"в портовом кабаке"};
+const LINGER={
+  quiet:["Вы сидите в углу, пока бармен не перестаёт вас замечать. О вас забывают — и город тоже.","Два часа над нетронутым бокалом. Музыка, чужие голоса, и никто не смотрит в вашу сторону.","Вы просто сидите. Иногда это лучшее, что может сделать вампир: перестать быть заметным."],
+  feed:["Пьяный за стойкой рад компании. Когда он уходит, у него немного кружится голова — от выпитого, конечно.","Официантка задерживается у вашего столика дольше, чем нужно. Потом не вспомнит почему."],
+  mood:["Кто-то включает старую песню, и полбара подпевает. Вы — нет. Но слушаете до конца.","За окном идёт дождь. Здесь тепло, шумно и бессмысленно — как в жизни, которой у вас больше нет.","Бармен рассказывает про бывшую жену. Вы киваете. Это ничего не стоит, и это приятно."],
+};
+function lingerHere(){
+  const h=G.city.map[G.pos];G.time=Math.min(CONFIG.nightEnd,G.time+2);if(G.R)rivalsAdvance(2);
+  const opts=[];const hook=sideHookFor(h.t,"bar");
+  if(hook)opts.push(["hook",3]);
+  const unknown=["filmer","feeder","motive","patron"].filter(a=>axisValid(a)&&!G.truth.known.some(k=>k.axis===a));
+  if(G.night>=3&&unknown.length&&G.lingerTruth!==G.night)opts.push(["truth",1.3]);
+  const talk=Object.values(G.R).filter(r=>r.order&&["go","deliver"].includes(r.order.stage)&&!r.spilled);
+  if(talk.length&&G.night>=3)opts.push(["rival",1.6]);
+  opts.push(["quiet",G.alarm>0?2.2:.6],["feed",1.2],["mood",1]);
+  const tot=opts.reduce((s,o)=>s+o[1],0);let x=Math.random()*tot,k="mood";for(const [n,w] of opts){x-=w;if(x<=0){k=n;break}}
+  let text,fx="";
+  if(k==="hook")text=sideHook(hook);
+  else if(k==="truth"){G.lingerTruth=G.night;const a=pick(unknown);learn(a,AXIS_TEXT[a]()+".");text=`За соседним столиком двое спорят вполголоса. Один из них — гуль, вы чуете это по запаху. «…да точно тебе говорю: ${AXIS_TEXT[a]()}». Вы делаете вид, что смотрите в окно.`}
+  else if(k==="rival"){const r=pick(talk);r.spilled=true;const v=VERBS[r.order.verb].verb.toLowerCase(),o=OBJECTS[r.order.obj].name.toLowerCase();
+    text=`У стойки — Сородич клана ${CLANS[r.clan].name}. Он выпил кровь пьяного и сам слегка пьян. «Князь велел мне — ${v}: ${o}. Как будто я мальчик на побегушках». Теперь вы знаете, чем занят клан ${CLANS[r.clan].name}.`;
+    G.secrets.push({t:`Клан ${CLANS[r.clan].name} получил от Князя поручение: ${v} — ${o}.`,n:G.night,where:h.name})}
+  else if(k==="quiet"){text=pick(LINGER.quiet);if(G.alarm>0){G.alarm--;fx="Тревога −1"}}
+  else if(k==="feed"){text=pick(LINGER.feed);G.hunger=clamp(G.hunger-1,0,CONFIG.hungerMax);fx="Голод −1"}
+  else text=pick(LINGER.mood);
+  G.enc={h:G.pos,res:{text,choice:`Посидеть ${BAR_NAME[h.t]}`,fx},e:{t:"Два часа "+BAR_NAME[h.t],x:"",c:[]}};
+  addLog(`<b>Вы сидите ${BAR_NAME[h.t]}.</b> ${text}${fx?` <span class="fx">${fx}</span>`:""}`);render();
+}
+const NEW_ITEMS={
+  revolver:{name:"Револьвер с серебряными пулями",court:"Вы кладёте перед Князем револьвер охотника. Кто-то в городе готовится к войне.",value:1},
+  diary:{name:"Дневник чужого гуля",court:"Дневник гуля: имена, даты, адреса. Князь читает молча и убирает его в стол.",value:2},
+  key:{name:"Старый ключ с гербом",court:"Ключ от склепа с гербом одного из старых родов. Князь узнаёт герб — и не говорит чей.",value:1},
+  tape:{name:"Кассета с записью допроса",court:"На кассете голос охотника: он рассказывает о Сородичах больше, чем должен знать человек.",value:2},
+};
+Object.assign(ITEMS,NEW_ITEMS);
+const STASH_TEXT={revolver:"Под половицей — свёрток в промасленной тряпке. Внутри револьвер и шесть серебряных пуль.",diary:"За отошедшей плиткой — тетрадь в клеёнке. Почерк ровный, имена — знакомые.",key:"В трещине между камнями — старый ключ с гербом. Кто-то спрятал его давно и не вернулся.",tape:"В урне, под мусором, — кассета без подписи. Кто-то очень хотел от неё избавиться."};
+const SEARCH_NONE=["Вы обходите квартал, заглядываете во дворы и подвалы. Ничего — кроме кошки, которая долго смотрит вам вслед.","Мусор, лужи, чужие окна. Если здесь что-то и было, его забрали до вас.","Вы стоите на углу и слушаете город. Он говорит много, но не о том."];
+function searchHere(){
+  const h=G.city.map[G.pos];G.time=Math.min(CONFIG.nightEnd,G.time+2);if(G.R)rivalsAdvance(2);(G.searched=G.searched||[]).push(G.pos);
+  let text,fx="";const st=(G.stash||[]).find(s=>s.k===G.pos&&!s.got);const hook=sideHookFor(h.t,"search");
+  if(st){st.got=true;text=STASH_TEXT[st.item];if(!G.items.includes(st.item)){G.items.push(st.item);fx="в сумку: "+ITEMS[st.item].name}}
+  else if(hook&&Math.random()<.75)text=sideHook(hook);
+  else if(Math.random()<.35){const e=pick(SEARCH_SECRETS.filter(s=>!G.secrets.some(x=>x.t===s[1]))||[]);if(e){text=e[0];G.secrets.push({t:e[1],n:G.night,where:h.name});fx="новая запись в дневнике"}else text=pick(SEARCH_NONE)}
+  else text=pick(SEARCH_NONE);
+  G.enc={h:G.pos,res:{text,choice:"Осмотреться",fx},e:{t:"Вы осматриваетесь",x:"",c:[]}};
+  addLog(`<b>Осмотр: «${h.name}».</b> ${text}${fx?` <span class="fx">${fx}</span>`:""}`);render();
+}
+const SEARCH_SECRETS=[
+  ["На стене подъезда — свежий знак: круг с тремя чертами. Так метят дома, где есть «свои».","Носферату метят безопасные подъезды кругом с тремя чертами."],
+  ["В подвале — ход в коллектор, и он явно ухожен: ступени подметены.","Под городом есть ухоженные ходы. Кто-то ими пользуется."],
+  ["На лавочке — забытая газета с обведённым объявлением: «Куплю старинные вещи. Ночью»","Кто-то из Сородичей скупает старину через объявления в газете."],
+  ["Окна квартиры на третьем этаже заклеены фольгой изнутри. Свет там не горит никогда.","В городе больше убежищ, чем Сородичей при дворе. Кто-то живёт без Князя."],
+  ["На заборе кто-то нацарапал: «Они пьют нас по пятницам». Почерк детский.","Даже дети в этом районе что-то знают."],
+];
+
+/* ============================ СТОРОННИЕ ИСТОРИИ ============================
+   Спрятаны в городе. О них узнают из слухов в барах, при осмотре или случайно забредя в нужное место.
+   Шаги ведут по названиям районов — их нужно найти на карте. Награда — союзники. */
+const ALLIES={
+  singer:{name:"Лиза, певица",perk:"В клубах и театре можно зайти к ней: голод −2 без риска, раз за ночь."},
+  taxi:{name:"Гоша, таксист",perk:"Раз за ночь — такси в любой знакомый район за час."},
+  nurse:{name:"Вера, медсестра",perk:"В больнице — пакет крови без риска: голод −3, раз за ночь."},
+  prof:{name:"Профессор Ланской",perk:"В университете он делится находками: иногда — часть правды о деле."},
+  radio:{name:"Пиратская волна",perk:"В промзоне и на пустырях можно пустить по радио ложный слух: город остывает. Раз в три ночи."},
+  anarch:{name:"Шрам, анарх",perk:"Во враждебной встрече с Сородичем можно позвать его — стычка в вашу пользу."},
+};
+const SIDE={
+ singer:{title:"Тишина в «Бархате»",via:{bar:["club","theatre"],search:["club","theatre","res"]},
+  hook:"Бармен протирает стакан третий раз подряд: «Лиза не выходит на сцену четвёртую ночь. Она снимала комнату — {L1}. Увидите её — скажите, что я не злюсь».",
+  steps:[{area:["res"],t:"Комната под крышей",x:"Дверь не заперта. Косметика рассыпана по полу, на зеркале помадой: «Он сказал, я буду петь вечно».",
+     c:[{t:"Осмотреть комнату",o:{text:"Под кроватью — программка вечера и визитка с адресом от руки: {L2}. Кто-то обещал ей вечность.",time:1,next:1}},
+        {t:"Расспросить соседку",roll:true,ok:{text:"Соседка видела «бледного красавчика»: он увёл Лизу ночью. Она слышала адрес — {L2}.",next:1},fail:{text:"Соседка захлопывает дверь и звонит кому-то. Лучше уйти и вернуться позже.",alarm:1}}]},
+   {area:["cem","park","old"],t:"Склеп с открытой решёткой",x:"Внутри — свечи и Лиза: бледная, с пустым взглядом. Над ней — молодой Сородич без клана. Он хотел подарить ей вечность и испугался на полпути.",
+     c:[{t:"Отвести Лизу домой и стереть ей эту ночь",roll:true,ok:{text:"Она приходит в себя в своей комнате и думает, что видела дурной сон. Через неделю она снова поёт — и для вас всегда найдётся столик.",ally:"singer"},fail:{text:"Память уходит не до конца: иногда Лиза смотрит в зал так, будто ищет кого-то. Но столик для вас всё равно найдётся.",ally:"singer",alarm:1}},
+        {t:"Сдать неоната Князю",o:{text:"Неонат не сопротивляется. Князь узнает, что вы навели порядок там, где вас не просили. Лиза уходит из города.",status:1,end:true}},
+        {t:"Оставить её себе",o:{text:"Пара капель вашей крови — и она будет помнить только вас. Неонат исчезает в темноте. Лиза поёт теперь для одного слушателя.",ally:"singer"}}]}]},
+ taxi:{title:"Долг таксиста",via:{bar:["rail","market","port"],search:["rail","market"]},
+  hook:"Таксист у входа курит в кулак: «Задолжал людям из порта. До конца недели не отдам — сожгут машину». Он ночует в машине — {L1}.",
+  steps:[{area:["rail","market","res"],t:"Старый «Опель» с шашечкой",x:"Таксист Гоша сначала пугается, потом машет рукой: «Вы не от них? Тогда садитесь, расскажу».",
+     c:[{t:"Выслушать",o:{text:"Его долг держит бригадир по кличке Ржавый. Бытовка Ржавого — {L2}.",time:1,next:1}}]},
+   {area:["port","ind"],t:"Бытовка бригадира",x:"Ржавый пересчитывает деньги и не поднимает глаз: «Таксист? Пусть платит или ходит пешком».",
+     c:[{t:"Внушить, что долг выплачен",roll:true,ok:{text:"Ржавый вычёркивает строчку в тетради. Гоша теперь ваш должник — и мотор у него всегда заведён.",ally:"taxi"},fail:{text:"Ржавый трясёт головой и зовёт ребят. Уходить приходится быстро. Можно вернуться в другую ночь.",alarm:1}},
+        {t:"Заплатить из своего кармана",o:{text:"Для вас эти деньги — пустяк, для Гоши — жизнь. Он смотрит на вас как на святого.",ally:"taxi",time:1}},
+        {t:"Припугнуть по-настоящему",o:{text:"Ржавый больше никого не тронет. Но его ребята видели ваши глаза.",ally:"taxi",alarm:2}}]}]},
+ nurse:{title:"Недостача в банке крови",via:{bar:["old","rail"],search:["hosp","uni","res"]},
+  hook:"Вы слышите разговор двух санитаров: из банка крови пропадают пакеты, и ночную медсестру Веру грозятся уволить. Больница — {L1}.",
+  steps:[{area:["hosp"],t:"Подвал больницы",x:"Гудят холодильники. Медсестра Вера плачет над журналом: «Я ничего не брала! Кто-то приходит ночью — я слышала шаги».",
+     c:[{t:"Остаться и подождать вора",o:{text:"Под утро в подвал спускается тощий парень в капюшоне и уходит с двумя пакетами. Вы идёте следом до самого дома — {L2}.",time:3,next:1}},
+        {t:"Изучить журнал",roll:true,ok:{text:"Пакеты пропадают в одни и те же ночи. В журнале доноров — его адрес: {L2}.",next:1},fail:{text:"Подписи, даты — ничего не понятно. Придётся прийти ещё раз.",time:1}}]},
+   {area:["slum","res"],t:"Холодная квартира",x:"На полу — пустые пакеты из-под крови. В углу дрожит худой парень с водянистыми глазами: слабокровный, который так и не научился охотиться.",
+     c:[{t:"Научить его охотиться и отпустить",o:{text:"Вы показываете, как брать немного и не оставлять следов. Он больше не будет красть. Вера оправдана — и у неё для вас всегда найдётся пакет.",ally:"nurse",time:1}},
+        {t:"Сдать его Князю",o:{text:"Слабокровных при дворе не жалуют. Князь коротко благодарит. Вера оправдана — и не забудет вас.",ally:"nurse",status:1}},
+        {t:"Уйти — пусть сами разбираются",o:{text:"Через неделю Веру увольняют. Парень находит другую больницу.",end:true}}]}]},
+ prof:{title:"Профессор и хроники",via:{bar:["old","theatre"],search:["uni","cath","old"]},
+  hook:"На доске объявлений — листовка: лекция «Ночные хозяева города: мифы и архивы». Профессор Ланской ищет «свидетелей». Кафедра — {L1}.",
+  steps:[{area:["uni"],t:"Кабинет, заваленный папками",x:"Профессор Ланской показывает вырезки за сто лет: одни и те же лица на снимках с разницей в полвека. «Последнее доказательство — в книге погребений», — шепчет он.",
+     c:[{t:"Выслушать до конца",o:{text:"Книга погребений хранится в архиве — {L2}. Он собирается туда на днях.",time:1,next:1}},
+        {t:"Внушить ему бросить тему",roll:true,ok:{text:"Он вдруг устаёт от своей темы и закрывает папку. Навсегда. Город стал чуть безопаснее.",alarm:-2,end:true},fail:{text:"Внушение не берёт: он слишком увлечён. «Вы ведь тоже это видите?» Архив, говорит он, — {L2}.",next:1}}]},
+   {area:["cath","cem","old"],t:"Архив",x:"Книга погребений, пометки на полях. Ваш город выдаёт себя на каждой странице.",
+     c:[{t:"Сжечь книгу",o:{text:"Страницы горят. Профессор никогда не найдёт своего доказательства — и, может быть, это сохранит ему жизнь.",alarm:-2,heat:1,end:true}},
+        {t:"Отдать книгу профессору — и направить его",roll:true,ok:{text:"Вы подсказываете ему, где искать «не там». Он счастлив и теперь делится с вами всем, что узнаёт о городе.",ally:"prof"},fail:{text:"Он слишком умён и смотрит на вас дольше, чем нужно. Но работать с вами согласен.",ally:"prof",alarm:1}}]}]},
+ radio:{title:"Пиратская волна",via:{bar:["port","rail"],search:["ind","edge","slum"]},
+  hook:"Из приёмника сторожа — шёпот: «…ночные люди не отражаются в витринах. Смотрите в витрины…» Сторож говорит, что эфир идёт откуда-то отсюда — {L1}.",
+  steps:[{area:["ind","edge"],t:"Ржавая вышка",x:"Провода, генератор, вагончик. Внутри пусто: самодельный передатчик и тетрадь с расписанием эфиров.",
+     c:[{t:"Изучить тетрадь",o:{text:"Следующий эфир ведущий проводит из гаража — {L2}.",time:1,next:1}},
+        {t:"Разбить передатчик",o:{text:"Передатчик молчит. Но в тетради сказано: «запасной — в гараже», {L2}.",alarm:-1,next:1}}]},
+   {area:["res","slum","edge"],t:"Гараж с антенной",x:"Немолодой мужчина в наушниках говорит в микрофон о «ночных людях» и не замечает вас.",
+     c:[{t:"Стереть ему память",roll:true,ok:{text:"Он забывает, о чём вёл эфиры. Город остаётся без пророка.",alarm:-2,heat:1,end:true},fail:{text:"Он кричит в микрофон: «Они здесь!» — и эфир это слышит. Передатчик вы разбиваете, но поздно.",alarm:2,end:true}},
+        {t:"Сделать его своим голосом",o:{text:"Вы садитесь рядом. С этой ночи пиратская волна будет говорить то, что нужно вам.",ally:"radio",time:1}}]}]},
+ anarch:{title:"Анарх в подвале",via:{bar:["port","market"],search:["slum","ind","edge"]},
+  hook:"Бездомные у костра говорят: в подвале живёт «злой, с глазами как у волка». Никого не трогает, но крысы оттуда ушли. Подвал — {L1}.",
+  steps:[{area:["slum","ind","edge"],t:"Подвал",x:"Матрас, гантели из арматуры. Анарх по кличке Шрам смотрит исподлобья: «Ты от Князя? Нет? Тогда слушай. Меня ищет двор. Помоги — не забуду».",
+     c:[{t:"Выслушать",o:{text:"Ему нужны документы и билет. Человек, который их делает, сидит — {L2}.",time:1,next:1}},
+        {t:"Сдать его Князю сразу",o:{text:"Шрам не сопротивляется, только смотрит. Вы теперь на хорошем счету у Князя — и на плохом у анархов.",status:2,pk:1,end:true}}]},
+   {area:["market","rail","old"],t:"Каморка за прилавком",x:"Мастер документов — старый гуль без хозяина — берёт фото Шрама и ждёт денег.",
+     c:[{t:"Оплатить документы",o:{text:"Через час паспорт готов. Шрам остаётся в городе под чужим именем: «Позови — и я приду».",ally:"anarch",time:2}},
+        {t:"Сдать обоих Князю",o:{text:"Двое за одну ночь. Князь доволен. Анархи о вас тоже не забудут.",status:2,pk:1,end:true}}]}]},
+};
+function leadText(k){const h=G.city.map[k];return `«${h.name}» (${TYPES[h.t].n.toLowerCase()}; от Элизиума — ${dirText("0,0",k)})`}
+function initSide(){
+  G.side={};const used=new Set([G.haven,"0,0"]);
+  const spot=a=>{let c=Object.values(G.city.map).filter(h=>a.includes(h.t)&&!used.has(h.k));if(!c.length)c=Object.values(G.city.map).filter(h=>!["ely","river"].includes(h.t)&&!used.has(h.k));const k=pick(c).k;used.add(k);return k};
+  for(const id in SIDE)G.side[id]={st:"hidden",step:0,locs:SIDE[id].steps.map(s=>spot(s.area))};
+  G.stash=shuffle(Object.keys(NEW_ITEMS)).map(item=>({item,k:spot(Object.keys(TYPES).filter(t=>!["ely","river"].includes(t))),got:false}));
+  G.allies=[];G.used={};
+}
+function sideHookFor(t,how){if(!G.side)return null;const c=Object.keys(SIDE).filter(id=>G.side[id].st==="hidden"&&SIDE[id].via[how].includes(t));return c.length?pick(c):null}
+function sideFill(id,t){const s=G.side[id];return t.replace(/\{L1\}/g,leadText(s.locs[0])).replace(/\{L2\}/g,leadText(s.locs[1]))}
+function sideHook(id){const s=G.side[id];s.st="active";const t=sideFill(id,SIDE[id].hook);addLog(`<b>Новая история: «${SIDE[id].title}».</b>`);return t}
+// вошли в район: не здесь ли шаг истории?
+function sideCheck(k){
+  if(!G.side)return false;
+  for(const id in SIDE){const s=G.side[id];if(["done","lost"].includes(s.st)||s.locs[s.step]!==k)continue;
+    if(s.st==="hidden"){if(s.step!==0)continue;s.st="active";addLog(`<b>Новая история: «${SIDE[id].title}».</b> Вы набрели на неё сами.`)}
+    if(s.tried===G.night)continue;
+    const st=SIDE[id].steps[s.step];
+    G.enc={h:k,res:null,side:id,e:{t:st.t,x:st.x,c:st.c}};return true}
+  return false;
+}
+function sideOutcome(out){
+  const id=G.enc.side,s=G.side[id];let text=sideFill(id,out.text);
+  if(out.next){s.step++;s.tried=0}else s.tried=G.night;
+  if(out.ally){s.st="done";if(!G.allies.includes(out.ally))G.allies.push(out.ally);text+=` <b>Новый союзник: ${ALLIES[out.ally].name}.</b> ${ALLIES[out.ally].perk}`}
+  else if(out.end){s.st="done"}
+  if(out.heat)G.heat=clamp((G.heat||0)-out.heat,0,8);
+  if(out.pk)G.PK.trust[G.clan]+=out.pk;
+  if(s.st==="done")addLog(`<b>История «${SIDE[id].title}» закончена.</b>`);
+  return {...out,text};
+}
+function storiesCard(){
+  if(!G.side)return "";const act=Object.keys(SIDE).filter(id=>G.side[id].st==="active");const done=Object.keys(SIDE).filter(id=>G.side[id].st==="done");
+  if(!act.length&&!G.allies.length&&!done.length)return "";
+  return `<div class="card"><span class="eyebrow">Город</span><h2>Истории и союзники</h2>
+    ${act.map(id=>{const s=G.side[id];return `<p><b>${SIDE[id].title}.</b> <span class="hint">Ищите ${leadText(s.locs[s.step])}.${s.tried===G.night?" Сегодня там больше ничего не сделать.":""}</span></p>`}).join("")}
+    ${G.allies.length?`<ul>${G.allies.map(a=>`<li><b>${ALLIES[a].name}</b> — <span class="hint">${ALLIES[a].perk}</span></li>`).join("")}</ul>`:""}
+    ${done.length?`<p class="hint">Закончено историй: ${done.length} из ${Object.keys(SIDE).length}.</p>`:""}</div>`;
+}
+// польза от союзников
+function allyActions(){
+  const a=G.allies||[],t=G.city.map[G.pos].t,b=[];G.used=G.used||{};
+  if(a.includes("singer")&&["club","theatre"].includes(t)&&G.used.singer!==G.night)b.push(`<button onclick="useAlly('singer')">Зайти к Лизе · 30 мин</button>`);
+  if(a.includes("nurse")&&t==="hosp"&&G.used.nurse!==G.night)b.push(`<button onclick="useAlly('nurse')">Пакет от Веры · 30 мин</button>`);
+  if(a.includes("prof")&&t==="uni"&&G.used.prof!==G.night)b.push(`<button onclick="useAlly('prof')">Зайти к профессору · 1 ч</button>`);
+  if(a.includes("radio")&&["ind","edge"].includes(t)&&!(G.used.radio>G.night-3))b.push(`<button onclick="useAlly('radio')">Слух по пиратскому радио · 1 ч</button>`);
+  if(a.includes("taxi")&&G.used.taxi!==G.night)b.push(`<button class="${G.taxiMode?"primary":""}" onclick="G.taxiMode=!G.taxiMode;render()">${G.taxiMode?"Выберите знакомый район на карте":"Позвонить Гоше · такси"}</button>`);
+  return b.join("");
+}
+function useAlly(id){
+  G.used[id]=G.night;let text;
+  if(id==="singer"){G.time+=1;G.hunger=clamp(G.hunger-2,0,CONFIG.hungerMax);text="Лиза поёт последнюю песню для вас одной и протягивает запястье за кулисами. Голод −2."}
+  if(id==="nurse"){G.time+=1;G.hunger=clamp(G.hunger-3,0,CONFIG.hungerMax);text="Вера молча протягивает холодный пакет. «Списан по сроку», — говорит она и отворачивается. Голод −3."}
+  if(id==="prof"){G.time+=2;const unknown=["filmer","feeder","motive","patron"].filter(a=>axisValid(a)&&!G.truth.known.some(k=>k.axis===a));
+    if(unknown.length&&Math.random()<.5){const a=pick(unknown);learn(a,AXIS_TEXT[a]()+".");text=`Профессор возбуждён: «Я сопоставил даты и снимки!» Из его сбивчивого рассказа вы понимаете главное: ${AXIS_TEXT[a]()}.`}
+    else text="Профессор показывает новые вырезки. Ничего о деле — но вы узнаёте, что ваш город помнит вас лучше, чем вы думали."}
+  if(id==="radio"){G.time+=2;G.heat=clamp((G.heat||0)-1.5,0,8);G.alarm=clamp(G.alarm-1,0,CONFIG.alarmMax);text="В эфир уходит история про утечку газа и массовые галлюцинации. К утру полгорода пересказывает её как правду. Тревога −1."}
+  G.time=Math.min(CONFIG.nightEnd,G.time);addLog(`<b>${ALLIES[id].name}.</b> ${text}`);
+  G.enc={h:G.pos,res:{text,choice:ALLIES[id].name,fx:""},e:{t:ALLIES[id].name,x:"",c:[]}};render();
+}
+function taxiTo(k){G.taxiMode=false;G.used.taxi=G.night;G.pos=k;G.time=Math.min(CONFIG.nightEnd,G.time+2);if(G.R)rivalsAdvance(2);reveal(k);G.visitedTonight.add(k);
+  addLog(`<b>Такси.</b> Гоша довозит вас до «${G.city.map[k].name}» и не задаёт вопросов.`);setDistrictSound();focusCam();render()}
+
+/* ---------- новые встречи: чтобы за двенадцать ночей город не повторялся ---------- */
+ENC.water.push(
+  {t:"Рыбак на рассвете",x:"Старик с удочкой у самой воды. Он говорит, не оборачиваясь: «Ты из тех, кто не стареет? Мой отец видел тебя. Здесь же. В семьдесят девятом».",
+   c:[{t:"Сесть рядом",o:{text:"Он рассказывает, как отец всю жизнь боялся ночной реки. Вы молчите. Он не просит ничего объяснять.",time:1,secret:"Рыбак на набережной помнит Сородичей с семидесятых. Его отец видел их."}},
+      {t:"Стереть ему этот разговор",roll:true,ok:{text:"Он моргает и забывает, зачем заговорил.",alarm:-1},fail:{text:"Он трясёт головой: «Не надо. Я и так никому не скажу». Почему-то вы ему верите.",time:1}}]},
+  {t:"Баржа с музыкой",x:"Мимо медленно проплывает баржа, на палубе — вечеринка. Кто-то машет вам рукой и кричит: «Прыгай к нам!»",
+   c:[{t:"Перепрыгнуть на палубу",roll:true,ok:{text:"Вы приземляетесь мягко, как кошка. Час музыки, тёплых тел и мокрого ветра. Сходите на следующей пристани.",hunger:-2,time:2},fail:{text:"Прыжок выходит слишком длинным для человека. Пара телефонов успевает это снять.",alarm:2,time:1}},
+      {t:"Помахать в ответ",o:{text:"Баржа уходит в темноту. Музыка ещё долго звучит над водой."}}]},
+  {t:"Опрокинутая лодка",x:"У лодочной станции — перевёрнутая лодка. Под ней кто-то спрятал спортивную сумку.",
+   c:[{t:"Заглянуть в сумку",o:{text:"Пачки денег и пистолет. Чья-то очень плохая ночь только начинается.",time:1,secret:"У лодочной станции прячут деньги и оружие. Кто-то готовит побег."}},
+      {t:"Не трогать",o:{text:"Вы уходите. Чужие проблемы пахнут порохом."}}]},
+);
+ENC.club.push(
+  {t:"Фотограф",x:"Парень с профессиональной камерой снимает танцпол сверху. Объектив медленно поворачивается в вашу сторону.",
+   c:[{t:"Подойти и засветить плёнку взглядом",roll:true,ok:{text:"Он вдруг решает, что эти кадры неудачные, и удаляет всю карту. Улыбается вам, сам не зная чему.",alarm:-1},fail:{text:"Вспышка. Он доволен снимком. Вы — нет.",alarm:1}},
+      {t:"Уйти из кадра",o:{text:"Вы растворяетесь в толпе. На снимке останется только размытое пятно.",time:1}}]},
+  {t:"Гримёрка",x:"Служебный коридор, приоткрытая дверь. Актриса снимает грим и разговаривает с отражением — а отражение, кажется, отвечает.",
+   c:[{t:"Заглянуть",o:{text:"Отражения нет. Она разговаривает с пустым зеркалом — и это ей не мешает. Она тоже из ваших.",time:1,secret:"В театре играет Сородич: актриса без отражения."}},
+      {t:"Тихо закрыть дверь",o:{text:"Некоторые двери лучше не открывать дважды."}}]},
+  {t:"Закрытая вечеринка Анархов",x:"Подвал, граффити, гаражный рок. У входа двое в косухах: они чуют вас так же, как вы их.",
+   c:[{t:"Войти без приглашения",roll:true,ok:{text:"Вас пропускают с ухмылкой. Час разговоров о том, что Князь — старый пиявка, а город принадлежит улице.",time:2,secret:"Анархи собираются в подвалах Неоновой мили. Князя они не признают."},fail:{text:"Вас выталкивают на улицу. Кто-то кричит вслед про «прихвостней двора».",alarm:1}},
+      {t:"Развернуться",o:{text:"Не ваша вечеринка. Пока."}}]},
+);
+ENC.sacred.push(
+  {t:"Колокольня",x:"Дверь на колокольню не заперта. Наверху — ветер и весь город, как на ладони.",
+   c:[{t:"Подняться",o:{text:"Вы долго смотрите на огни. Отсюда видно, где горит свет в окнах тех, кто не спит. Город кажется почти вашим.",time:2,secret:"С колокольни собора видно весь город. Хорошее место, чтобы следить."}},
+      {t:"Не искушать судьбу",o:{text:"Колокол может ударить в любую минуту. Вы уходите."}}]},
+  {t:"Исповедь",x:"В пустой церкви горит одна свеча. Священник в исповедальне, кажется, ждёт именно вас.",
+   c:[{t:"Исповедоваться",o:{text:"Вы говорите, не называя ничего прямо. Он слушает и в конце говорит: «Бог слышит и вас». Вы не знаете, правда ли это. Но становится тише.",time:1,alarm:-1}},
+      {t:"Уйти, пока не узнал",o:{text:"Свеча за спиной вздрагивает, будто от вздоха."}}]},
+  {t:"Свежая могила",x:"Свежая земля, венки, ленты. Земля шевелится.",
+   c:[{t:"Помочь выбраться",o:{text:"Из могилы выбирается перепачканный неонат. Его обратили и бросили. Он плачет кровью и не знает, кто вы.",time:1,secret:"Кто-то в городе обращает людей и бросает их на кладбище."}},
+      {t:"Позвать Шерифа",o:{text:"Вы оставляете знак и уходите. Утром могила будет пустой — двор позаботится.",status:1}}]},
+);
+ENC.city.push(
+  {t:"Ночной курьер",x:"Курьер на велосипеде с термосумкой застрял у закрытого шлагбаума и ругается в телефон.",
+   c:[{t:"Подсказать дорогу",o:{text:"Он уезжает, благодарный, и оставляет вам холодный кофе, который вы не будете пить.",time:1}},
+      {t:"Покормиться",roll:true,ok:{text:"Он даже не слезает с велосипеда. Уезжает чуть бледнее.",hunger:-2},fail:{text:"Он вырывается и снимает вас на телефон, уезжая.",alarm:1,hunger:-1}}]},
+  {t:"Свет в мэрии",x:"На четвёртом этаже мэрии горит одно окно. Там спорят двое, и один голос вам знаком — вы слышали его в Элизиуме.",
+   c:[{t:"Подслушать",roll:true,ok:{text:"Гуль одного из кланов торгуется с чиновником за разрешение на снос квартала. Кто-то из двора делает деньги на городе.",time:1,secret:"Гули двора торгуют разрешениями на снос через мэрию."},fail:{text:"Окно резко закрывается. Свет гаснет.",time:1}},
+      {t:"Не вмешиваться",o:{text:"Политика двора начинается там, где кончается ваша."}}]},
+  {t:"Дежурная аптека",x:"Аптекарь за стеклом читает книгу. На витрине — пачки бинтов и плакат «Сдай кровь — спаси жизнь».",
+   c:[{t:"Постучать",o:{text:"Он продаёт вам бинты и долго смотрит вслед. «Вы бледный. Сходите к врачу».",time:1}},
+      {t:"Пройти мимо",o:{text:"Плакат улыбается вам вслед."}}]},
+);
+ENC.industry.push(
+  {t:"Ночная смена",x:"Цех светится, как аквариум. Рабочий у ворот курит и смотрит на звёзды.",
+   c:[{t:"Покурить рядом",o:{text:"Он рассказывает, что ночью в цехах слышны шаги, когда никого нет. Вы-то знаете, чьи.",time:1,secret:"Под заводом кто-то живёт. Рабочие слышат шаги в пустых цехах."}},
+      {t:"Покормиться",roll:true,ok:{text:"Он засыпает на скамейке. Проснётся с головной болью и будет винить смену.",hunger:-2},fail:{text:"Он хватает монтировку. Вы уходите прежде, чем станет хуже.",alarm:1}}]},
+  {t:"Собаки",x:"Стая бродячих собак преграждает путь. Они не лают — просто смотрят.",
+   c:[{t:"Посмотреть в ответ",roll:true,ok:{text:"Вожак отводит глаза первым. Стая расступается.",time:0},fail:{text:"Стая бросается. Вы уходите по крышам гаражей, порвав пальто.",time:1,alarm:1}},
+      {t:"Обойти",o:{text:"Длинный круг через пустые цеха.",time:1}}]},
+  {t:"Поезд в депо",x:"В депо стоит пассажирский вагон с зашторенными окнами. Из-под двери сочится холод.",
+   c:[{t:"Заглянуть",roll:true,ok:{text:"Внутри — гробы. Шесть штук, свежие бирки: «Груз для частной коллекции». Кто-то везёт в город Сородичей.",secret:"В депо стоит вагон с гробами. В город везут Сородичей."},fail:{text:"Из вагона выходит человек с фонарём и ружьём. Приходится уходить.",alarm:1}},
+      {t:"Не трогать",o:{text:"Холод ещё долго держится у вас в пальцах."}}]},
+);
+ENC.nature.push(
+  {t:"Ночные бегуны",x:"По аллее бегут двое в светоотражающих жилетах. Наушники, ровное дыхание, пульс, который вы слышите за сто метров.",
+   c:[{t:"Пропустить их",o:{text:"Они пробегают мимо. Один оборачивается — и ускоряется."}},
+      {t:"Догнать отставшего",roll:true,ok:{text:"Он думает, что подвернул ногу и присел отдохнуть. Минуты для вас хватает.",hunger:-2},fail:{text:"Второй возвращается за другом и светит фонариком вам в лицо.",alarm:1}}]},
+  {t:"Костёр на пустыре",x:"Подростки жгут костёр и рассказывают страшилки. Одна из них — про вас: про того, кто ходит по району ночами.",
+   c:[{t:"Подойти к огню",o:{text:"Вы просите прикурить. Они смеются и не узнают в вас героя своей страшилки. Может, в следующий раз узнают.",time:1}},
+      {t:"Дослушать из темноты",o:{text:"Страшилка заканчивается не так, как вы думали. Подростки разбегаются, хохоча.",secret:"Местные подростки рассказывают страшилку о «ночном человеке». Она слишком точная."}}]},
+  {t:"Лебеди",x:"На чёрной воде пруда — пара лебедей. Они спят, спрятав головы под крыло.",
+   c:[{t:"Постоять у воды",o:{text:"Ни одного звука. Впервые за долгое время вам ничего не нужно.",time:1,alarm:-1}},
+      {t:"Идти дальше",o:{text:"Город ждёт."}}]},
+);
+
 /* ============================ СОХРАНЕНИЕ ============================ */
-const SAVE_KEY="before-the-dawn-city-v1";
+const SAVE_KEY="before-the-dawn-city-v2";
 function save(){if(!G||!G.clan)return;try{const o={...G,city:{seed:G.seed},seen:[...G.seen],visited:[...G.visited],visitedTonight:[...G.visitedTonight],usedEnc:[...G.usedEnc],enc:null,path:[],cam:null};localStorage.setItem(SAVE_KEY,JSON.stringify(o))}catch(e){}}
 function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return false;const o=JSON.parse(t);if(o.phase==="end"||(o.clan&&!o.PK))return false;
   const city=generate(o.seed);rng=Math.random;
