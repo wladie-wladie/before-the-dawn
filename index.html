@@ -70,6 +70,8 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .enc h2{font-size:1.3rem}
 .choices{display:flex;flex-direction:column;gap:6px}
 .risk{font-family:var(--f-mono);font-size:.68rem;color:var(--blood);border:1px solid var(--blood);border-radius:3px;padding:0 4px;margin-left:6px}
+button.mini{padding:2px 8px;font-size:.78rem;margin-left:6px}
+.why{margin:.4rem 0;padding-left:1.1rem}.why li{margin:.3rem 0}
 .need{font-size:.78rem;color:var(--dim)}
 button:disabled{opacity:.45;cursor:not-allowed}
 .lobby{margin:.6rem 0;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.06)}
@@ -116,7 +118,7 @@ footer{margin-top:22px;max-width:1000px}
 </head>
 <body>
 <div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.6 «Двор»</span></div>
+  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v0.7</span></div>
   <div id="hud"></div>
   <div class="row" style="margin-left:auto">
     <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
@@ -136,7 +138,7 @@ footer{margin-top:22px;max-width:1000px}
 <footer class="hint"><a href="intriga-v02.html" style="color:var(--dim)">Прошлая версия v0.2 «Ночная интрига»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
-   BEFORE THE DAWN · v0.6 «Двор»
+   BEFORE THE DAWN · v0.7
    Большой гекс-город: генерация, прогулка, встречи, звук районов.
    Все тексты и числа — в разделе ДАННЫЕ.
    ===================================================================== */
@@ -148,8 +150,8 @@ const CONFIG = {
   nightStart: 21*2,    // 21:00 в получасах
   nightEnd: 30*2,      // 06:00 следующего дня
   hungerMax: 5, alarmMax: 10,
-  encounterFirst: 0.7, // шанс встречи при первом входе в район
-  encounterAgain: 0.25,
+  encounterFirst: 0.12, // шанс встречи при первом входе в район
+  encounterAgain: 0.04,
 };
 
 // Типы районов. g — группа звука и встреч
@@ -889,7 +891,7 @@ function clickHex(k){
   if(k===G.pos){G.sel=k;render();return}
   if(!G.seen.has(k)){G.sel=k;render();return}
   const p=bfs(G.pos,k);if(!p)return;
-  const walking=G.path.length>0;G.path=p;if(!walking)walkStep();
+  G.homeRun=false;const walking=G.path.length>0;G.path=p;if(!walking)walkStep();
 }
 function walkStep(){
   if(!G.path.length||G.enc||G.phase!=="walk"){render();return}
@@ -901,26 +903,28 @@ function walkStep(){
   const h=G.city.map[k];
   if(first)addLog(`Вы впервые в районе «${h.name}» (${TYPES[h.t].n}).`);
   focusCam();
-  if(k==="0,0"&&G.night===COURT.night&&!G.courtDone&&G.time<=COURT.to){G.path=[];startCourt();return}
-  if(k==="0,0"&&G.PK&&G.PK.finalNight===G.night&&!G.verdict&&G.time<=50){G.path=[];startVerdict();return}
-  if(k==="0,0"&&G.night===COUNCIL&&!G.councilDone&&G.time<=COURT.to){G.path=[];startCouncil();return}
-  if(G.R&&meetCheck()){G.path=[];render();return}
+  const hr=G.homeRun;
+  if(!hr&&k==="0,0"&&G.night===COURT.night&&!G.courtDone&&G.time<=COURT.to){G.path=[];startCourt();return}
+  if(!hr&&k==="0,0"&&G.PK&&G.PK.finalNight===G.night&&!G.verdict&&G.time<=50){G.path=[];startVerdict();return}
+  if(!hr&&k==="0,0"&&G.night===COUNCIL&&!G.councilDone&&G.time<=COURT.to){G.path=[];startCouncil();return}
+  if(!hr&&G.R&&meetCheck()){G.path=[];render();return}
   if(G.order&&G.order.stage==="deliver"&&G.order.carry){G.time+=1;if(G.R)rivalsAdvance(1);const busy=["club","res","market","theatre","rail"].includes(h.t);
     if(busy&&rng()<.3){G.alarm=clamp(G.alarm+1,0,CONFIG.alarmMax);addLog(`В «${h.name}» людно: вас видели с тем, что вы несёте. Тревога +1.`)}}
-  if(G.order&&G.order.stage==="go"&&k===G.order.k){if(G.order.lock===G.night){addLog("Здесь сегодня слишком много внимания. Вернитесь завтра.")}else{G.path=[];G.order.known=k;startOrderScene();render();return}}
-  if(G.order&&G.order.stage==="go"&&k!==G.order.k&&areaOf(G.order.obj).includes(h.t)&&!G.order.checked.includes(k)){G.path=[];G.order.checked.push(k);hintScene(h);render();return}
+  if(!hr&&G.order&&G.order.stage==="go"&&k===G.order.k){if(G.order.lock===G.night){addLog("Здесь сегодня слишком много внимания. Вернитесь завтра.")}else{G.path=[];G.order.known=k;startOrderScene();render();return}}
+  if(!hr&&G.order&&G.order.stage==="go"&&k!==G.order.k&&areaOf(G.order.obj).includes(h.t)&&!G.order.checked.includes(k)){G.path=[];G.order.checked.push(k);hintScene(h);render();return}
   reqCheck(k);
-  if(cqCheck(k)){G.path=[];render();return}
-  if(sideCheck(k)){G.path=[];render();return}
+  if(!hr&&cqCheck(k)){G.path=[];render();return}
+  if(!hr&&sideCheck(k)){G.path=[];render();return}
   if(threatLvl()>0&&rng()<threatLvl()*.012){const tier=SIGNS[Math.max(0,threatTier()-1)];addLog(`<i>${pick(tier)}</i>`)}
-  if(G.order&&G.order.stage==="deliver"&&k==="0,0"){G.path=[];deliverOrder();render();return}
+  if(!hr&&G.order&&G.order.stage==="deliver"&&k==="0,0"){G.path=[];deliverOrder();render();return}
   if(checkCourt())return;
   // встреча
-  if(h.t!=="ely"&&firstTonight&&rng()<(first?CONFIG.encounterFirst:CONFIG.encounterAgain)){G.path=[];startEncounter(h);render();return}
+  if(!hr&&h.t!=="ely"&&firstTonight&&rng()<(first?CONFIG.encounterFirst:CONFIG.encounterAgain)){G.path=[];startEncounter(h);render();return}
   if(G.time===CONFIG.nightEnd-2)addLog("<b>Небо на востоке сереет.</b> Час до рассвета — пора к убежищу.");
+  homeWarn();
   if(G.time>=CONFIG.nightEnd){G.path=[];render();setTimeout(dawn,500);return}
   render();
-  if(G.path.length)setTimeout(walkStep,reduceMotion()?60:360);
+  if(G.path.length)setTimeout(walkStep,reduceMotion()?60:(hr?200:360));else G.homeRun=false;
 }
 function checkCourt(){
   if(G.PK&&verdictMissed())return true;
@@ -1011,7 +1015,7 @@ function orderCard(){
       ${G.order.known?`<p>Вы знаете, где цель: «${G.city.map[G.order.known].name}» ✦</p>${G.pos===G.order.known?`<button class="primary" onclick="startOrderScene();render()">Заняться поручением</button>`:`<button onclick="clickHex('${G.order.known}')">Идти туда</button>`}`:""}`:""}
     ${st==="deliver"?`<p>Осталось прийти в Элизиум.</p>${p&&p.length?`<button class="primary" onclick="clickHex('0,0')">В Элизиум · ${p.length*30*(G.order.carry?2:1)} мин</button>`:`<button class="primary" onclick="deliverOrder()">Доложить Князю</button>`}`:""}
     ${st==="deliver"&&G.order.carry?'<p class="hint">Вы несёте это с собой: каждый шаг — час, а в людных районах вас могут заметить.</p>':""}
-    ${st==="done"?'<p style="color:var(--ok)">Выполнено.</p>':""}${st==="late"?'<p style="color:var(--blood)">Сорвано: кто-то успел раньше вас.</p>':""}${st==="failed"?'<p style="color:var(--blood)">Провалено: срок вышел.</p>':""}</div>`;
+    ${st==="proxy"?`<p>Поручение выполняет клан ${CLANS[G.order.proxyBy].name} от вашего имени. Ваше дело — ждать или заняться другим.</p>`:""}${st==="done"?'<p style="color:var(--ok)">Выполнено.</p>':""}${st==="late"?'<p style="color:var(--blood)">Сорвано: кто-то успел раньше вас.</p>':""}${st==="failed"?'<p style="color:var(--blood)">Провалено: срок вышел.</p>':""}</div>`;
 }
 function rivalBefore(){return Object.values(G.R||{}).find(r=>r.order&&r.order.obj===G.order.obj&&r.order.lock===G.night)}
 function rivalTook(){const S=G.objSt[G.order.obj];if(!S.by||S.by===G.clan)return null;
@@ -1027,7 +1031,7 @@ function startOrderScene(){
   const mob=isMovable(O.obj);
   const ch=v.c[O.obj].map(c=>{const n={...c};
     if(c.o)n.o={...c.o,text:fill(c.o.text)};if(c.ok)n.ok={...c.ok,text:fill(c.ok.text)};if(c.fail)n.fail={...c.fail,text:fill(c.fail.text),flee:mob,lock:!mob};return n});
-  addTogether(ch,O);
+  addTogether(ch,O);ch.push(LEAVE);
   G.enc={h:O.k,res:null,quest:true,e:{t:`${v.verb}: ${o.name.toLowerCase()}`,x:pre+fill(o.intro()),c:ch}};
 }
 const DIRS8=["на север","на северо-восток","на восток","на юго-восток","на юг","на юго-запад","на запад","на северо-запад"];
@@ -1081,7 +1085,7 @@ function endOrdersHtml(){
     ${(G.fallen||[]).length?`<li>Инквизиция сожгла убежища: ${G.fallen.map(c=>"клан "+CLANS[c].name).join(", ")}.</li>`:""}</ul>
     <p class="hint">Вы сами докопались до ${T.known.filter(k=>["filmer","feeder","motive","patron"].includes(k.axis)).length} из ${T.patron?4:3} частей правды.</p>`;
 }
-function goHome(){const p=bfs(G.pos,G.haven);if(p&&p.length){G.path=p;walkStep()}}
+
 function hunt(){
   const h=G.city.map[G.pos];const n=Math.max(1,(G.hunger>=4?2:3)-(threatLvl()>=6?1:0)-(G.curfewNight===G.night?1:0));if(G.R)rivalsAdvance(2);const dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));const ok=dice.some(v=>v>=5)||(cqWon("tor")&&["club","theatre","res"].includes(h.t));
   const busy=["club","res","market","theatre","rail"].includes(h.t);
@@ -1096,11 +1100,12 @@ function startEncounter(h){
   if(rng()<Math.min(.22,threatLvl()*.018)){const tp=THREAT_ENC.filter((e,i)=>e.tier<=Math.max(1,threatTier())&&!G.usedEnc.has("t"+i));if(tp.length){const e=pick(tp);G.usedEnc.add("t"+THREAT_ENC.indexOf(e));G.enc={e,h:h.k,res:null};return}}
   const g=TYPES[h.t].g;const pool=ENC[g].filter((e,i)=>!G.usedEnc.has(g+i));
   const list=pool.length?pool:ENC[g];const e=pick(list);G.usedEnc.add(g+ENC[g].indexOf(e));
-  G.enc={e,h:h.k,res:null};
+  G.enc={e:withPass(e),h:h.k,res:null};
 }
 function chooseEnc(i){
   const ch=G.enc.e.c[i];let out=ch.o,dice=null;
   if(ch.need&&!needMet(ch.need))return;if(ch.wait){waitPartner();return}
+  if(ch.leave){G.enc=null;addLog("Вы уходите, ничего не тронув. Сюда можно вернуться.");render();return}
   if(ch.o&&ch.o.cqwait){const st=COURT.from-G.time;G.time=COURT.from;rivalsAdvance(st);G.enc=null;cqCheck(G.pos);render();return}
   if(ch.together)G.enc.together=ch.together;if(ch.need)consumeNeed(ch.need);
   if(ch.roll){const n=G.enc&&(G.enc.quest||G.enc.hard)?(G.hunger>=4?1:2):(G.hunger>=4?2:3);dice=Array.from({length:n},()=>1+Math.floor(Math.random()*6));out=dice.some(v=>v>=5)?ch.ok:ch.fail;out={...out,ok:dice.some(v=>v>=5)}}
@@ -1139,11 +1144,12 @@ function closeEnc(){
 }
 function dawn(){
   if(G.phase!=="walk")return;
-  const home=G.pos===G.haven;
-  if(!home){G.hunger=clamp(G.hunger+2,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm+1,0,CONFIG.alarmMax);addLog(`<b>Рассвет застаёт вас вне убежища.</b> Вы забиваетесь в подвал в «${G.city.map[G.pos].name}» и днём горите во сне. Голод +2, Тревога +1.`)}
+  G.homeRun=false;const home=G.pos===G.haven||!!allyHavenAt(G.pos);
+  if(!home){caughtByDawn();if(G.phase==="end"){render();return}}
+  else if(G.pos!==G.haven){G.wakeAt=G.pos;addLog(`<b>Рассвет.</b> Союзник, клан ${CLANS[allyHavenAt(G.pos)].name}, пускает вас переждать день у себя.`)}
   else if(!(G.jailNight>=G.night))addLog("<b>Рассвет.</b> Вы засыпаете в убежище за мгновение до первых лучей.");
   if(G.R)rivalsDawn();
-  if(G.order&&["go","deliver"].includes(G.order.stage)&&G.night>=(G.order.until||4)){G.PK.trust[G.clan]-=1;if(G.objSt[G.order.obj].st==="taken")G.objSt[G.order.obj].st=OPEN_ST[G.order.obj];G.order.stage="failed";G.order.carry=false;G.status=clamp(G.status-1,0,5);addLog(`<b>Срок вышел.</b> Князь не получил того, что просил. Статус −1.`)}
+  if(G.order&&["go","deliver","proxy"].includes(G.order.stage)&&G.night>=(G.order.until||4)){G.PK.trust[G.clan]-=1;if(G.objSt[G.order.obj].st==="taken")G.objSt[G.order.obj].st=OPEN_ST[G.order.obj];G.order.stage="failed";G.order.carry=false;G.status=clamp(G.status-1,0,5);addLog(`<b>Срок вышел.</b> Князь не получил того, что просил. Статус −1.`)}
   G.raided=null;if(G.PK)worldDawn();if(G.PK){socDawn();cqDawn()}
   if(G.alarm>=CONFIG.alarmMax){G.phase="end";G.result="lost";render();return}
   if(G.night>=CONFIG.nights){G.phase="end";G.result="done";render();return}
@@ -1152,7 +1158,9 @@ function dawn(){
 function nextNight(){
   G.night++;G.time=CONFIG.nightStart;G.pos=G.haven;G.visitedTonight=new Set([G.haven]);G.hunger=clamp(G.hunger+1,0,CONFIG.hungerMax);G.alarm=clamp(G.alarm-2,0,CONFIG.alarmMax);
   G.dayNote=null;G.phase="walk";addLog(`<b>Ночь ${G.night}.</b> Голод +1 после пробуждения. За день слухи немного улеглись: Тревога −2.`);
+  if(G.wakeAt){G.pos=G.wakeAt;G.wakeAt=null}G.homeRun=false;
   if(G.soc&&jailNight())return;
+  if(G.burned){G.burned=false;G.time=48;addLog("<b>Вы приходите в себя только к полуночи.</b> Кожа ещё дымится, и каждый шаг даётся с трудом.")}
   if(G.night>=3)princeDusk();
   if(G.night===COURT.night)addLog(`<b>Гонец Князя:</b> сегодня двор собирается в Элизиуме с 23:00 до 01:00. Отсутствие будет замечено.`);
   if(G.night===COUNCIL)addLog(`<b>Гонец Князя:</b> сегодня — совет двора в Элизиуме с 23:00 до 01:00. Князь назовёт Шерифа.`);
@@ -1264,6 +1272,8 @@ function drawMarks(){
     if(G.order&&((G.order.stage==="go"&&G.order.known)||G.order.stage==="deliver")){const tk=G.order.stage==="go"?G.order.known:"0,0";const h=G.city.map[tk];const [x,y]=px(h.q,h.r);s+=`<text x="${x+20}" y="${y-16}" text-anchor="middle" class="haven" style="fill:#ffd36b">✦</text>`}
     // дело клана
     {const st=G.CQ&&cqStage();if(st&&G.night>=st.n&&G.seen.has(G.CQ.locs[G.CQ.step])){const h=G.city.map[G.CQ.locs[G.CQ.step]];const [x,y]=px(h.q,h.r);s+=`<text x="${x-20}" y="${y-16}" text-anchor="middle" class="haven" style="fill:${CLANS[G.clan].color}">◆</text>`}}
+    // убежище союзника
+    {const a=G.soc&&myAlly();if(a&&G.seen.has(G.R[a].haven)){const h=G.city.map[G.R[a].haven];const [x,y]=px(h.q,h.r);s+=`<text x="${x}" y="${y-22}" text-anchor="middle" class="haven" style="fill:${CLANS[a].color}">⌂</text>`}}
     // убежище
     {const h=G.city.map[G.haven];const [x,y]=px(h.q,h.r);s+=`<text x="${x}" y="${y-22}" text-anchor="middle" class="haven">⌂</text>`}
     // игрок
@@ -1291,17 +1301,17 @@ function hereCard(){
 }
 function actionsCard(){
   if(G.phase!=="walk"||G.enc)return "";
-  const p=bfs(G.pos,G.haven);const t=p?p.length:0;const left=CONFIG.nightEnd-G.time;
+  const p=bfs(G.pos,G.haven);const t=p?p.length*(G.order&&G.order.carry?2:1):0;const left=CONFIG.nightEnd-G.time;
   return `<div class="card"><div class="row">
-    ${G.pos!==G.haven?`<button class="${left<=t+1?"primary":""}" onclick="goHome()">Домой · ${t*30} мин</button>`:""}
+    ${G.pos!==G.haven?`<button class="${left<=t+3?"primary":""}" onclick="goHome()">Домой · ${t*30} мин</button>`:""}${allyHomeBtn()}${pendingHere()}
     ${G.city.map[G.pos].t!=="ely"?`<button onclick="hunt()">Поохотиться · 1 ч</button>`:""}
     ${BAR_T.includes(G.city.map[G.pos].t)?`<button onclick="lingerHere()">Посидеть ${BAR_NAME[G.city.map[G.pos].t]} · 1 ч</button>`:""}
-    ${G.city.map[G.pos].t!=="ely"&&!(G.searched||[]).includes(G.pos)?`<button onclick="searchHere()">Осмотреться · 1 ч</button>`:""}
+    ${canSearch()?`<button class="primary" onclick="searchHere()">Осмотреться · 30 мин</button>`:""}
     ${G.pos===G.haven&&G.warned?`<button onclick="relocate()">Сменить убежище · 2 ч</button>`:""}
     ${allyActions()}${cqActions()}
     <button onclick="waitHere()">Переждать 30 мин</button>
     ${G.pos===G.haven?`<button onclick="G.time=CONFIG.nightEnd;dawn()">Лечь спать до рассвета</button>`:""}</div>
-    <p class="hint">Нажмите на соседний район, чтобы сделать шаг, или на любой открытый — чтобы пройти туда маршрутом. Каждый шаг — 30 минут.${left<=t+1&&G.pos!==G.haven?' <b style="color:var(--blood)">Пора домой: до рассвета впритык.</b>':""}</p></div>`;
+    <p class="hint">Нажмите на соседний район, чтобы сделать шаг, или на любой открытый — чтобы пройти туда маршрутом. Каждый шаг — 30 минут.${left<=t+3&&G.pos!==G.haven?' <b style="color:var(--blood)">Пора домой: рассвет вне убежища может стать последним.</b>':""}</p></div>`;
 }
 function encCard(){
   const E=G.enc;if(!E)return "";const h=G.city.map[E.h];
@@ -1344,7 +1354,7 @@ function clanCard(){
 }
 function walkIntroCard(){
   return `<div class="card intro"><span class="eyebrow">Ночь первая</span><h2>Выйти в город</h2><p>Пройдитесь по городу. Узнайте его районы, людей и тайны. Каждый шаг — полчаса ночи. Встречи на улицах могут накормить вас, рассказать что-то важное — или поставить под угрозу Маскарад.</p>
-    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂), иначе день будет тяжёлым.</li><li>Некоторые встречи дают <b>предметы</b>. Сохраните их: завтра Князь созывает двор в Элизиуме, и там их можно поднести.</li><li>В барах можно <b>посидеть</b>, в любом районе — <b>осмотреться</b>. Так находят слухи, тайники и сторонние истории. Их никто не принесёт вам сам.</li></ul>
+    <ul><li><b>Голод</b> растёт каждую ночь. Охотьтесь (в людных районах — сытнее) или кормитесь во встречах. На пятой отметке Зверь вырывается наружу.</li><li><b>Тревога</b> растёт, когда люди видят лишнее. На десятой Маскарад рухнет.</li><li>До <b>06:00</b> вернитесь в убежище (⌂). Рассвет на улице — почти верная смерть.</li><li>Некоторые встречи дают <b>предметы</b>. Сохраните их: завтра Князь созывает двор в Элизиуме, и там их можно поднести.</li><li>В барах можно <b>посидеть</b>, в любом районе — <b>осмотреться</b>. Так находят слухи, тайники и сторонние истории. Их никто не принесёт вам сам.</li></ul>
     <p>У вашего клана — своё дело: первая весть от Примогена уже в дневнике. Другие Сородичи — не только соперники: с ними можно договариваться, обмениваться услугами и заключать союзы. На встречах и в кулуарах Элизиума.</p>
     <p class="hint">Партия — двенадцать ночей. Игра сохраняется сама: можно закрыть и вернуться.</p>
     <button class="primary" onclick="G.introDone=true;render()">Понятно</button></div>`;
@@ -1355,7 +1365,7 @@ function dayCard(){
 }
 function endCard(){
   const tot=Object.keys(G.city.map).length;
-  return `<div class="card intro"><span class="eyebrow">${G.result==="lost"?"Конец":G.result==="court"?"Дело закрыто":"Двенадцать ночей прошло"}</span><h2>${G.result==="lost"?"Маскарад рухнул":G.result==="court"?"Суд Князя окончен":"Вы узнали свой город"}</h2>${G.verdict&&G.verdict.text.length?G.verdict.text.map(t=>`<p>${t}</p>`).join(""):""}
+  return `<div class="card intro"><span class="eyebrow">${G.result==="lost"||G.result==="dead"?"Конец":G.result==="court"?"Дело закрыто":"Двенадцать ночей прошло"}</span><h2>${G.result==="dead"?"Окончательная смерть":G.result==="lost"?"Маскарад рухнул":G.result==="court"?"Суд Князя окончен":"Вы узнали свой город"}</h2>${G.result==="dead"?`<p>${G.deathText}</p>`:""}${G.verdict&&G.verdict.text.length?G.verdict.text.map(t=>`<p>${t}</p>`).join(""):""}
     <p>Статус при дворе: <b>${G.status} из 5</b>. Открыто районов: <b>${G.visited.size} из ${tot}</b>. Тайн: <b>${G.secrets.length}</b>. Тревога: ${G.alarm}/${CONFIG.alarmMax}.</p>
     ${endOrdersHtml()}${socEndHtml()}
     <div class="row"><button class="primary" onclick="newCity()">Новый город</button><button onclick="restartSame()">Этот же город заново</button></div></div>`;
@@ -1575,7 +1585,7 @@ const NEW_ITEMS={
 Object.assign(ITEMS,NEW_ITEMS);
 const STASH_TEXT={revolver:"Под половицей — свёрток в промасленной тряпке. Внутри револьвер и шесть серебряных пуль.",diary:"За отошедшей плиткой — тетрадь в клеёнке. Почерк ровный, имена — знакомые.",key:"В трещине между камнями — старый ключ с гербом. Кто-то спрятал его давно и не вернулся.",tape:"В урне, под мусором, — кассета без подписи. Кто-то очень хотел от неё избавиться."};
 const SEARCH_NONE=["Вы обходите квартал, заглядываете во дворы и подвалы. Ничего — кроме кошки, которая долго смотрит вам вслед.","Мусор, лужи, чужие окна. Если здесь что-то и было, его забрали до вас.","Вы стоите на углу и слушаете город. Он говорит много, но не о том."];
-function searchHere(){
+function searchHereOld(){
   const h=G.city.map[G.pos];G.time=Math.min(CONFIG.nightEnd,G.time+2);if(G.R)rivalsAdvance(2);(G.searched=G.searched||[]).push(G.pos);
   let text,fx="";const st=(G.stash||[]).find(s=>s.k===G.pos&&!s.got);const hook=sideHookFor(h.t,"search");
   if(st){st.got=true;text=STASH_TEXT[st.item];if(!G.items.includes(st.item)){G.items.push(st.item);fx="в сумку: "+ITEMS[st.item].name}}
@@ -1674,7 +1684,7 @@ function sideCheck(k){
     if(s.st==="hidden"){if(s.step!==0)continue;s.st="active";addLog(`<b>Новая история: «${SIDE[id].title}».</b> Вы набрели на неё сами.`)}
     if(s.tried===G.night)continue;
     const st=SIDE[id].steps[s.step];
-    G.enc={h:k,res:null,side:id,e:{t:st.t,x:st.x,c:st.c}};return true}
+    G.enc={h:k,res:null,side:id,e:{t:st.t,x:st.x,c:[...st.c,LEAVE]}};return true}
   return false;
 }
 function sideOutcome(out){
@@ -1942,7 +1952,7 @@ function cqCheck(k){const s=cqStage();if(!s||G.CQ.locs[G.CQ.step]!==k||G.night<s
   if(s.timed){if(G.night!==COUNCIL||G.time>COURT.to)return false;
     if(G.time<COURT.from){G.enc={h:k,res:null,cq:true,e:{t:s.t,x:"Ещё рано: всё начнётся в 23:00. Можно подождать здесь — или уйти и вернуться.",c:[{t:"Ждать до 23:00",o:{text:"",cqwait:true}},{t:"Уйти и вернуться позже",o:{text:"Вы уходите. Только не опоздайте.",cqleave:true}}]}};return true}}
   const x=typeof s.x==="function"?s.x(G.CQ.flags):s.x;
-  G.enc={h:k,res:null,cq:true,hard:true,e:{t:s.t,x:cqFill(x),c:s.c}};return true}
+  G.enc={h:k,res:null,cq:true,hard:true,e:{t:s.t,x:cqFill(x),c:[...s.c,LEAVE]}};return true}
 function cqAct(a){const T=G.truth,S=G.objSt;
   if(a==="feeder"||a==="feeder2"){learn("feeder",`в подворотне кормился ${feederName()}.`);let t=` В зеркале проступает лицо: это ${feederName()}.`;
     if(a==="feeder2"){if(T.patron){learn("patron",`за видео стоит клан ${CLANS[T.patron].name}.`);t+=` А за его спиной, в глубине зеркала, — тень клана ${CLANS[T.patron].name}: это они всё подстроили.`}else{learn("motive",tfill(MOTIVES[T.motive].text));t+=` И ещё: ${tfill(MOTIVES[T.motive].text).toLowerCase()}`}}return t}
@@ -2006,12 +2016,17 @@ function info(c){const r=G.R[c];const parts=[];
 function tellAll(c,leak){const r=G.R[c];const sh=shareable(c);for(const a of sh)r.known.push(a);
   if(leak&&!soc(c).pact&&sh.length&&Math.random()<.5){pkLearn(sh[0]);return " Похоже, он расскажет это Князю раньше вас."}return ""}
 function tryPact(c){const S=soc(c);const p=clamp(.2+.2*S.rel+.15*S.owe+(G.rpact&&G.rpact.includes(c)?-.25:0)+(G.status>=3?.1:0)-(G.traitor?.3:0),.05,.9);
-  if(Math.random()<p){S.pact=true;S.rel=Math.max(S.rel,2);addLog(`<b>Союз с кланом ${CLANS[c].name}.</b>`);
+  if(Math.random()<p){S.pact=true;S.rel=Math.max(S.rel,2);G.seen.add(G.R[c].haven);addLog(`<b>Союз с кланом ${CLANS[c].name}.</b>`);
     return "«Договорились». Теперь вы делитесь сведениями, а в трудную минуту он поручится за вас и укроет при облаве. Союз можно разорвать — но двор запомнит, чего стоит ваше слово."}
   return "Он улыбается одними губами: «Не сейчас. Сначала докажите, что с вами стоит иметь дело»."}
 function socAct(kind,c){const S=soc(c),r=G.R[c];let t="";
   if(kind==="pact")return tryPact(c);
-  if(kind==="pactyes"){S.pact=true;S.rel=Math.max(S.rel,2);addLog(`<b>Союз с кланом ${CLANS[c].name}.</b>`);return "Вы пожимаете холодную руку. Теперь вы делитесь сведениями, ручаетесь друг за друга и укрываете друг друга при облаве."}
+  if(kind==="refuse")return "Посыльный возвращается ни с чем: «Ответа не будет»";
+  if(kind==="warn"){G.truth.listed=G.truth.listed.filter(x=>x!==c);S.owe+=2;relAdd(c,2);return `Через час приходит ответ: «Я ваш должник. Дважды». Сородич клана ${CLANS[c].name} сменит убежище до рассвета — облава придёт в пустой дом.`}
+  if(kind==="proxy"){const busy=r.order&&["go","deliver","sealed"].includes(r.order.stage);if(busy&&!S.pact)return "«Я занят поручением Князя. Не сейчас»";
+    if(!S.pact)S.owe--;const O=G.order;if(busy)r.queued=r.order;r.order={obj:O.obj,verb:O.verb,k:O.k,stage:"go",checked:[],known:null,hint:null,lock:0,from:G.night,until:O.until,proxy:G.clan};O.stage="proxy";O.proxyBy=c;
+    return `«Сделаю — от вашего имени»${busy?", — отвечает союзник и откладывает собственное дело":""}. Теперь поручение в руках клана ${CLANS[c].name}. Справится до срока — Князь сочтёт это вашей заслугой.`}
+  if(kind==="pactyes"){S.pact=true;S.rel=Math.max(S.rel,2);G.seen.add(G.R[c].haven);addLog(`<b>Союз с кланом ${CLANS[c].name}.</b>`);return "Вы пожимаете холодную руку. Теперь вы делитесь сведениями, ручаетесь друг за друга и укрываете друг друга при облаве."}
   if(kind==="pactno"){relAdd(c,-1);return "«Как знаете». Он уходит, и вы чувствуете: предложение не повторится скоро."}
   if(kind==="call"){S.owe--;return info(c)+" Долг закрыт."}
   if(kind==="askd"){S.debt++;return info(c)+" Теперь вы ему должны — и он не забудет."}
@@ -2072,7 +2087,7 @@ function meetCheck(){
     c=[{t:"Заключить союз",o:{text:"",soc:"pactyes"}},{t:"Отказаться",o:{text:"",soc:"pactno"}}]}
   else if(!S.req&&S.rel>=-1&&Math.random()<.45&&(rq=makeReq(r.clan))){x+=" "+rq.ask;G.pendingReq=rq;
     c=[{t:"Согласиться",o:{text:"",soc:"reqyes"}},{t:"Отказать",o:{text:"",soc:"reqno"}}]}
-  else{c=S.pact?[{t:"Сверить записи",o:{text:"",soc:"notes"}}]:[{t:"Обменяться слухами",o:{text:"",soc:"trade"}},{t:"Предложить союз",o:{text:"",soc:"pact"}}];
+  else{c=S.pact?[{t:"Сверить записи",o:{text:"",soc:"notes"}}]:[{t:"Обменяться слухами"+(theyKnow(r.clan)?" · он знает то, чего не знаете вы":""),o:{text:"",soc:"trade"}},{t:"Предложить союз",o:{text:"",soc:"pact"}}];
     if(S.owe>0&&!S.pact)c.push({t:"Взыскать услугу: что он знает",o:{text:"",soc:"call"}});
     c.push({t:"Кивнуть и разойтись",o:{text:"Вы киваете друг другу и расходитесь. Каждый запомнил, где видел другого."}})}
   G.enc={h:G.pos,res:null,soc:r.clan,e:{t:S.pact?`Союзник: клан ${C}`:`Сородич клана ${C}`,x,c}};
@@ -2109,7 +2124,7 @@ function jointRival(r){const o=r.order;const m=G.order;
   if(r.pos===o.k){if(G.time>=o.meet+4&&!o.waited){o.waited=true;rivalAct(r)}return true}
   if(G.time>=o.meet-4){const p=bfsAll(r.pos,o.k);if(p.length)r.pos=p[0];return true}
   if(Math.random()<.4){const n=nbrs(r.pos).filter(x=>x!=="0,0");if(n.length)r.pos=pick(n)}return true}
-function jointReport(r){const o=r.order,m=G.order;
+function jointReport(r){proxyReport(r);const o=r.order,m=G.order;
   if(o&&o.partner===G.clan&&m&&m.partner===r.clan&&m.stage==="go"&&m.from===o.from){m.stage="late";m.solo=r.clan;G.PK.trust[G.clan]-=1;relAdd(r.clan,-1);
     addLog(`<i>Говорят, клан ${CLANS[r.clan].name} выполнил общее поручение сам — и доложил Князю, что вы не пришли.</i>`)}}
 function addTogether(ch,O){const pr=O.partner&&G.R[O.partner]&&G.R[O.partner].pos===O.k?O.partner:O.help&&G.R[O.help]?O.help:null;
@@ -2194,16 +2209,17 @@ function socDawn(){if(!G.soc)return;
     if(!S.pact&&S.rel<=-2&&Math.random()<.3+(G.rpact&&G.rpact.includes(c)?.15:0)){G.PK.rumors++;G.slander={c,known:false}}
     if(S.pact&&G.PK.trust[c]<=-2&&Math.random()<.3){S.pact=false;S.rel=-2;G.PK.rumors++;G.PK.trust[G.clan]-=1;addLog(`<b>Предательство.</b> Ваш союзник, клан ${CLANS[c].name}, спасая себя, рассказал Шерифу о ваших делах. Союза больше нет.`)}
     const r=G.R[c];if(r.order&&r.order.stage==="assist")r.order.stage="late";
-    if(Math.random()<.15){const ax=["filmer","feeder","motive","patron"].filter(a=>axisValid(a)&&!r.known.includes(a));if(ax.length)r.known.push(pick(ax))}}
+    if(r.queued&&!(r.order&&["go","deliver"].includes(r.order.stage))){r.order=r.queued;r.queued=null}
+    if(Math.random()<.3){const ax=["filmer","feeder","motive","patron"].filter(a=>axisValid(a)&&!r.known.includes(a));if(ax.length)r.known.push(pick(ax))}}
 }
 function nightHooks(){if(cqWon("ven")&&G.alarm>0){G.alarm--;addLog("Деньги клана работают: Тревога −1.")}socDusk();cqAnnounce()}
 function socCard(){if(!G.soc)return "";
   const rows=Object.keys(G.soc).map(c=>{if(!G.R[c])return `<li><b style="color:${CLANS[c].color}">${CLANS[c].name}</b> — <span class="hint">убежище сожжено Инквизицией</span></li>`;
     const S=G.soc[c],r=G.R[c];const ord=(S.pact||cqWon("nos")||r.spilled)&&r.order&&["go","deliver","assist"].includes(r.order.stage)?`<br><span class="hint">поручение: ${VERBS[r.order.verb].verb.toLowerCase()} — ${OBJECTS[r.order.obj].name.toLowerCase()}</span>`:"";
     const req=S.req?`<br><span class="hint">просьба: оставить знак в «${G.city.map[S.req.k].name}» до рассвета ${S.req.until===G.night?"этой":"следующей"} ночи</span>`:"";
-    return `<li><b style="color:${CLANS[c].color}">${CLANS[c].name}</b> — ${relWord(c)}${c===G.sheriff?" · Шериф":""}${ord}${req}</li>`}).join("");
-  return `<details class="card" ${G.night>=2?"open":""}><summary><h2 style="display:inline">Двор</h2></summary><ul>${rows}</ul>${G.sheriff===G.clan?'<p class="hint">Шериф — вы.</p>':""}${G.rpactKnown&&G.rpact?`<p class="hint">Кланы ${G.rpact.map(c=>CLANS[c].name).join(" и ")} держатся вместе.</p>`:""}
-    <p class="hint">Союзник делится сведениями, ручается за вас перед Князем и укрывает при облаве. Услуги — валюта двора: их получают за помощь и тратят на просьбы. Договориться можно при встрече на улице или в кулуарах Элизиума.</p></details>`}
+    return `<li><b style="color:${CLANS[c].color}">${CLANS[c].name}</b> — ${relWord(c)}${c===G.sheriff?" · Шериф":""}${theyKnow(c)?`<br><span class="hint" style="color:var(--lamp)">знает о деле то, чего не знаете вы</span>`:""}${ord}${req}${noteBtn(c)}</li>`}).join("");
+  return `<details class="card" open><summary><h2 style="display:inline">Двор</h2></summary><ul>${rows}</ul>${G.sheriff===G.clan?'<p class="hint">Шериф — вы.</p>':""}${G.rpactKnown&&G.rpact?`<p class="hint">Кланы ${G.rpact.map(c=>CLANS[c].name).join(" и ")} держатся вместе.</p>`:""}
+    <details><summary class="hint">Зачем вам другие Сородичи</summary>${WHY_COURT}</details></details>`}
 function pickScape(){const all=[G.clan,...G.rivals].filter(c=>c===G.clan||G.R[c]);all.sort((a,b)=>G.PK.trust[a]-G.PK.trust[b]);const s=all[0];
   if(s===G.clan){const al=myAlly();if(al){const alt=all.find(c=>c!==G.clan&&c!==al);if(alt){G.verdict.vouched=al;return alt}}}return s}
 function allyKnows(a){const al=myAlly();return al&&G.R[al].known.includes(a)?al:null}
@@ -2211,6 +2227,56 @@ function coup(){const ok=Math.random()<.35+.1*G.status;G.verdict.princeAccused=o
 function socEndHtml(){if(!G.soc)return "";const Q=G.CQ;
   return `<h3>Двор и клан</h3><ul>${Q?`<li>Дело клана «${CLANQ[Q.id].title}»: ${Q.won?"выполнено":Q.st==="failed"?"провалено":"не закончено"}.</li>`:""}
     ${Object.keys(G.soc).map(c=>`<li>Клан ${CLANS[c].name}: ${G.R[c]?relWord(c):"погиб"}.</li>`).join("")}${G.traitor?"<li>Двор запомнил вас как того, кто нарушает договоры.</li>":""}</ul>`}
+
+
+/* ============================ v0.7: рассвет, дорога домой, осмотр, зачем нужен двор ============================ */
+const LEAVE={t:"Уйти — вернуться позже",leave:true,o:{text:""}};
+// у каждой обычной встречи есть выбор, который не стоит времени
+function withPass(e){const free=e.c.some(c=>c.o&&!c.roll&&!c.o.time&&!(c.o.alarm>0)&&!(c.o.hunger>0));return free?e:{...e,c:[...e.c,{t:"Пройти мимо",o:{text:"Вы не задерживаетесь и идёте дальше."}}]}}
+// осмотр — главный источник событий: раз за ночь в каждом районе
+function searchHere(){
+  const h=G.city.map[G.pos];G.time=Math.min(CONFIG.nightEnd,G.time+1);if(G.R)rivalsAdvance(1);G.searchedTonight=G.searchedTonight||{};G.searchedTonight[G.pos]=G.night;
+  let text,fx="";const st=(G.stash||[]).find(s=>s.k===G.pos&&!s.got);const hook=sideHookFor(h.t,"search");
+  if(st){st.got=true;text=STASH_TEXT[st.item];if(!G.items.includes(st.item)){G.items.push(st.item);fx="в сумку: "+ITEMS[st.item].name}}
+  else if(hook&&Math.random()<.6)text=sideHook(hook);
+  else if(Math.random()<.72){startEncounter(h);addLog(`<b>Осмотр: «${h.name}».</b> ${G.enc.e.t}.`);render();return}
+  else if(Math.random()<.5){const e=pick(SEARCH_SECRETS.filter(s=>!G.secrets.some(x=>x.t===s[1])));if(e){text=e[0];G.secrets.push({t:e[1],n:G.night,where:h.name});fx="новая запись в дневнике"}else text=pick(SEARCH_NONE)}
+  else text=pick(SEARCH_NONE);
+  G.enc={h:G.pos,res:{text,choice:"Осмотреться",fx},e:{t:"Вы осматриваетесь",x:"",c:[]}};
+  addLog(`<b>Осмотр: «${h.name}».</b> ${text}${fx?` <span class="fx">${fx}</span>`:""}`);render();
+}
+function canSearch(){return G.city.map[G.pos].t!=="ely"&&(G.searchedTonight||{})[G.pos]!==G.night}
+// рассвет вне убежища
+function allyHavenAt(k){const a=myAlly();return a&&G.R[a].haven===k?a:null}
+function caughtByDawn(){const h=G.city.map[G.pos];const cover=["cem","old","slum","ind","port","res","rail","market","theatre","hosp","uni"].includes(h.t);
+  let p=cover?.5:.2;if(G.clan==="nos")p+=.25;if(G.hunger>=4)p-=.1;
+  if(Math.random()<p){const lost=G.items.splice(0,Math.ceil(G.items.length/2));G.hunger=CONFIG.hungerMax-1;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);G.status=clamp(G.status-1,0,5);G.burned=true;
+    G.dayNote=`Первый луч касается вашей руки, когда вы уже ломаете дверь подвала в «${h.name}». Весь день вы лежите в темноте среди труб, а солнце жжёт сквозь щели. Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1${lost.length?", половина сумки потеряна":""}. Следующей ночью вы очнётесь только к полуночи.`;
+    addLog(`<b>Рассвет застаёт вас вне убежища.</b> ${G.dayNote}`)}
+  else{G.phase="end";G.result="dead";G.deathText=`Вы не успели. Рассвет застаёт вас в «${h.name}»${cover?", и ни одна дверь не открылась вовремя":", где негде спрятаться"}. Солнце встаёт над городом, и через минуту от вас остаётся только пепел на асфальте.`;addLog(`<b>Окончательная смерть.</b> ${G.deathText}`)}}
+// дорога домой — напрямую, без событий
+function goHome(){const p=bfs(G.pos,G.haven);if(p&&p.length){const walking=G.path.length>0;G.path=p;G.homeRun=true;if(!walking)walkStep()}}
+function goAlly(){const a=myAlly();if(!a)return;const p=bfs(G.pos,G.R[a].haven);if(p&&p.length){const walking=G.path.length>0;G.path=p;G.homeRun=true;if(!walking)walkStep()}}
+function allyHomeBtn(){const a=myAlly();if(!a||G.pos===G.R[a].haven)return "";const p=bfs(G.pos,G.R[a].haven);if(!p)return "";return `<button onclick="goAlly()">В убежище союзника · ${p.length*30} мин</button>`}
+function pendingHere(){if(G.enc)return "";const s=cqStage();const cq=s&&G.CQ.locs[G.CQ.step]===G.pos&&G.night>=s.n&&G.CQ.tried!==G.night&&(!s.timed||G.night===COUNCIL&&G.time<=COURT.to);
+  const sd=G.side&&Object.keys(SIDE).some(id=>{const x=G.side[id];return x.st==="active"&&x.locs[x.step]===G.pos&&x.tried!==G.night});
+  return cq||sd?`<button class="primary" onclick="if(!cqCheck(G.pos))sideCheck(G.pos);render()">Вернуться к делу здесь</button>`:""}
+// двор: записки, знание соперников
+function theyKnow(c){const r=G.R[c];return r?r.known.filter(a=>AXIS_TEXT[a]&&axisValid(a)&&!G.truth.known.some(k=>k.axis===a)).length:0}
+function relLabel(c){const S=soc(c);return S.pact?"ваш союзник":S.rel<=-2?"враждебен":S.rel===-1?"холоден":S.rel===0?"нейтрален":S.rel===1?"приветлив":"дружен"}
+function noteBtn(c){return G.phase==="walk"&&!G.enc&&G.R[c]&&(G.noted||{})[c]!==G.night?` <button class="mini" onclick="noteScene('${c}')">Записка</button>`:""}
+function noteScene(c){G.noted=G.noted||{};G.noted[c]=G.night;const S=soc(c),C=CLANS[c].name;const ch=[];
+  ch.push({t:S.owe>0?"Попросить сведений · он вам должен":"Попросить сведений · вы будете должны",o:{text:"",soc:S.rel<=-2?"refuse":S.owe>0?"call":"askd"}});
+  if(!S.pact)ch.push({t:"Предложить союз",o:{text:"",soc:"pact"}});
+  if(G.order&&G.order.stage==="go"&&(S.pact||S.owe>0))ch.push({t:`Попросить выполнить ваше поручение${S.pact?"":" · спишется услуга"}`,o:{text:"",soc:"proxy"}});
+  if(G.truth.listed&&G.truth.listed.includes(c)&&G.truth.known.some(k=>k.axis==="list")&&G.objSt.list&&G.objSt.list.st==="exists")ch.push({t:"Предупредить: его убежище в списке Инквизиции",o:{text:"",soc:"warn"}});
+  ch.push({t:"Передумать",o:{text:"Вы рвёте записку."}});
+  G.enc={h:G.pos,res:null,soc:c,e:{t:`Записка клану ${C}`,x:`Вы пишете несколько строк и отдаёте записку гулю-посыльному. Сородич клана ${C} — ${relLabel(c)}.${theyKnow(c)?" Он знает о деле то, чего не знаете вы.":""} Ответ придёт до конца ночи.`,c:ch}};render()}
+function proxyReport(r){const o=r.order;if(o&&o.proxy===G.clan&&G.order&&G.order.stage==="proxy"){G.order.stage="done";G.PK.trust[G.clan]+=1;G.PK.trust[r.clan]-=1;G.status=clamp(G.status+1,0,5);G.objSt[o.obj].by=G.clan;
+  addLog(`<b>Поручение выполнено.</b> Клан ${CLANS[r.clan].name} сделал дело от вашего имени. Князь доволен вами. Статус +1.`)}}
+const WHY_COURT=`<ul class="why"><li><b>Сведения.</b> У других есть куски правды о деле. Без них на суде вам нечего будет сказать.</li><li><b>Поручитель.</b> Если Князь заподозрит вас, без поручителя — ночь в подвале и пустая сумка.</li><li><b>Укрытие.</b> Убежище союзника спасёт, если рассвет застанет вас в пути. Иначе можно сгореть.</li><li><b>Руки.</b> Должник или союзник выполнит ваше поручение за вас, поможет в деле клана, предупредит об облаве.</li></ul><p class="hint">Услуги получают за помощь — выполнив просьбу, уступив дело, поделившись сведениями — и тратят на просьбы. Договориться можно запиской, при встрече на улице и в кулуарах Элизиума.</p>`;
+function homeWarn(){if(G.homeRun||G.pos===G.haven||G.warnedHome===G.night)return;const p=bfs(G.pos,G.haven);if(!p)return;const need=p.length*(G.order&&G.order.carry?2:1);const left=CONFIG.nightEnd-G.time;
+  if(left<=need+3){G.warnedHome=G.night;addLog(`<b style="color:var(--blood)">До рассвета ${Math.floor(left/2)} ч${left%2?" 30 мин":""}, а дорога домой — ${need*30} мин.</b> Если солнце застанет вас на улице, можно сгореть.`)}}
 
 /* ============================ СОХРАНЕНИЕ ============================ */
 const SAVE_KEY="before-the-dawn-city-v3";
