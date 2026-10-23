@@ -152,6 +152,9 @@ body.su-open{overflow:hidden}
 .su-big .su-wm{height:46px}
 footer .darkpack{float:left;margin:0 12px 6px 0}
 .gen-dp{display:flex;align-items:center;gap:10px;margin-top:12px}.gen-dp img{width:44px;height:44px}
+#mapwrap,#mapwrap *{-webkit-user-select:none;user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
+#map{touch-action:none;cursor:grab}#map:active{cursor:grabbing}
+.gen-ub img{width:96px;height:96px}
 .dic{display:inline-block;width:16px;height:16px;margin-right:5px;vertical-align:-3px;background:#a3202f;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 .dice .die{width:38px;height:auto;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 .dice .die.s{filter:drop-shadow(0 0 8px rgba(217,164,65,.6))}
@@ -974,15 +977,16 @@ function initPanZoom(){
     if(c.w>maxW){const f=maxW/c.w;c.x-=(c.w*f-c.w)/2;c.y-=(c.h*f-c.h)/2;c.w*=f;c.h*=f}
     c.x=clamp(c.x,b.x-c.w*.5,b.x+b.w-c.w*.5);c.y=clamp(c.y,b.y-c.h*.5,b.y+b.h-c.h*.5)};
   const zoomAt=(f,cx,cy)=>{const [wx,wy]=world(cx,cy);const c=G.cam;c.x=wx-(wx-c.x)*f;c.y=wy-(wy-c.y)*f;c.w*=f;c.h*=f;clampCam();applyCam()};
-  svg.addEventListener("pointerdown",e=>{cancelAnimationFrame(camAnim);pts.set(e.pointerId,[e.clientX,e.clientY]);
+  svg.addEventListener("dragstart",e=>e.preventDefault());
+  svg.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.button!==0)return;if(e.pointerType==="mouse")e.preventDefault();cancelAnimationFrame(camAnim);pts.set(e.pointerId,[e.clientX,e.clientY]);
     if(pts.size===1){start={x:e.clientX,y:e.clientY,cam:{...G.cam}};G.dragged=false}
     if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])}}});
-  svg.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);
+  window.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);
     if(pts.size===2&&pinch){const [a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d>0){zoomAt(pinch.d/d,(a[0]+b[0])/2,(a[1]+b[1])/2);pinch.d=d;G.dragged=true}return}
     if(start){const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.hypot(dx,dy)>6)G.dragged=true;
       if(G.dragged){const k=scale();G.cam.x=start.cam.x-dx*k;G.cam.y=start.cam.y-dy*k;clampCam();applyCam()}}});
   const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(!pts.size){start=null;setTimeout(()=>{G.dragged=false},0)}};
-  svg.addEventListener("pointerup",up);svg.addEventListener("pointercancel",up);svg.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")up(e)});
+  window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);
   svg.addEventListener("wheel",e=>{e.preventDefault();cancelAnimationFrame(camAnim);zoomAt(e.deltaY>0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
 }
 /* ============================ ПОСТРОЕНИЕ КАРТЫ ============================ */
@@ -1767,9 +1771,15 @@ function hud(){if(!G||!G.clan)return "";const left=Math.max(0,CONFIG.nightEnd-G.
   return `<div class="hud${urg}"><div class="clock"><span class="big">${fmtTime(G.time)}</span><span class="hint">ночь ${G.night} из ${CONFIG.nights} · до рассвета ${hm(left)}${away?` · <b class="homeway">домой ${hm(need)}</b>`:""}</span><div class="sky"><span style="width:${pct}%"></span></div></div>
   <div class="meters"><span>Статус <b>${G.status}</b></span><span>Деньги <b>${G.money}</b></span><span>Голод <b class="pips">${"●".repeat(G.hunger)}${"○".repeat(CONFIG.hungerMax-G.hunger)}</b></span><span>Тревога <b>${G.alarm}/${CONFIG.alarmMax}</b></span><span>Карты <b>${G.hand.length}</b></span>
   <span title="Знаете только вы">Тайно за: <b style="color:${FAC[G.fac].color}">${FAC[G.fac].name}</b></span></div></div>`}
+// Издание: "darkpack" — бесплатная фан-версия (GitHub Pages), "unbound" — сборка для itch.io по программе World of Darkness Unbound
+const EDITION=(typeof window!=="undefined"&&window.BTD_EDITION)||"darkpack";
+const NOTICE="Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.";
+function legalBadge(){return EDITION==="unbound"
+  ?`<div class="gen-dp gen-ub"><img src="icons/legal/unbound.png" alt="World of Darkness Unbound"><span class="hint">Игра выпущена по программе World of Darkness Unbound. События игры не являются каноном World of Darkness.</span></div>`
+  :`<div class="gen-dp hint"><img src="icons/legal/darkpack.png" alt="Dark Pack">Неофициальная фан-игра по Vampire: The Masquerade.</div>`}
 function genCard(){return `<div class="card intro"><span class="eyebrow">Город строится</span><h2>Город, в котором предстоит жить вечно</h2>
   <p>Река режет его надвое. В центре — Элизиум. Часть районов держит Камарилья, часть — анархи, остальные ничьи. Каждый раз город и расклад сил собираются заново.</p>
-  <p class="hint">Город №${G.seed}.</p><div class="gen-dp hint"><img src="icons/legal/darkpack.png" alt="Dark Pack">Неофициальная фан-игра по Vampire: The Masquerade.</div>${G.phase==="built"?`<div class="row"><button onclick="newCity()">Другой город</button><button class="primary" onclick="G.phase='setup';render()">Войти в город</button></div>`:'<p class="hint">Загораются огни…</p>'}</div>`}
+  <p class="hint">Город №${G.seed}.</p>${legalBadge()}${G.phase==="built"?`<div class="row"><button onclick="newCity()">Другой город</button><button class="primary" onclick="G.phase='setup';render()">Войти в город</button></div>`:'<p class="hint">Загораются огни…</p>'}</div>`}
 function setupCard(){const S=G.setup;
   if(!S.clan)return `<div class="card intro"><span class="eyebrow">Кто вы · 1 из 3</span><h2>Выберите клан</h2><div class="clans">${Object.entries(CLANS).map(([id,c])=>`<button onclick="G.setup.clan='${id}';render()"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.line}</span><span class="hint"><b>Способность.</b> ${c.pas}</span></button>`).join("")}</div></div>`;
   if(!S.fac)return `<div class="card intro"><span class="eyebrow">Тайная сторона · 2 из 3</span><h2>На кого вы работаете на самом деле</h2>
