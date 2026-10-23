@@ -1,0 +1,76 @@
+/* Ночная карта слева во всю высоту, справа колонка «вы здесь / встреча / дневник»; на телефоне — карта сверху. */
+:root{
+  color-scheme: dark;
+  --night:#0c0d14; --panel:#161823; --panel2:#1f2231; --line:#2c3046;
+  --ink:#e8e3d6; --dim:#9895a6; --lamp:#e2a64e; --blood:#d8404f; --ok:#6fbf8a;
+  --f-display:"Alegreya SC", Georgia, serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--night);color:var(--ink);margin:0}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-block:10px 32px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;margin:0;letter-spacing:.02em;text-wrap:balance}
+h1{font-size:1.45rem} h2{font-size:1.15rem} h3{font-size:.9rem;color:var(--dim);margin-top:6px}
+p{margin:0;max-width:62ch}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:10px}
+.brand{display:flex;flex-direction:column}
+.brand .hint{font-size:.78rem}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.board{position:relative;background:#090a10;border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+#mapwrap svg{display:block;width:100%;height:min(78vh,820px);touch-action:none;cursor:grab}
+#mapwrap svg:active{cursor:grabbing}
+@media (max-width:960px){#mapwrap svg{height:58vh}}
+#zoom{position:absolute;right:10px;top:10px;display:flex;gap:4px}
+#zoom button{padding:4px 9px;font-size:.8rem;background:rgba(22,24,35,.85)}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card.intro{border-color:var(--lamp)}
+.eyebrow{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--lamp)}
+.hint{color:var(--dim);font-size:.85rem}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button{font:inherit;font-size:.88rem;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;text-align:left}
+button:hover:not(:disabled){border-color:var(--lamp)}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:1px}
+button.primary{background:var(--lamp);color:#1a1408;border-color:var(--lamp);font-weight:700}
+button.on{border-color:var(--lamp);color:var(--lamp)}
+.tag{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.clans{display:grid;grid-template-columns:1fr;gap:6px}
+.clans button{display:flex;flex-direction:column;gap:2px}
+.clans b{font-family:var(--f-display);font-size:1.05rem}
+.hud{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center}
+.clock{display:flex;flex-direction:column;gap:2px;min-width:200px}
+.clock .big{font-family:var(--f-mono);font-size:1.6rem;font-weight:600;color:var(--lamp);font-variant-numeric:tabular-nums;line-height:1}
+.sky{height:4px;border-radius:2px;background:linear-gradient(90deg,#1b2140,#2a2c4a 60%,#6a4a5a 85%,#d89a6a);position:relative;overflow:hidden}
+.sky span{position:absolute;inset:0 auto 0 0;background:rgba(12,13,20,.0);border-right:2px solid #fff}
+.meters{display:flex;flex-wrap:wrap;gap:4px 16px;font-family:var(--f-mono);font-size:.8rem;color:var(--dim)}
+.meters b{color:var(--ink);font-weight:600}
+.pips{letter-spacing:1px;color:var(--blood)!important}
+.enc{background:linear-gradient(180deg,#221a20,#191621);border:1px solid #6b3a44;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.enc h2{font-size:1.3rem}
+.choices{display:flex;flex-direction:column;gap:6px}
+.risk{font-family:var(--f-mono);font-size:.68rem;color:var(--blood);border:1px solid var(--blood);border-radius:3px;padding:0 4px;margin-left:6px}
+button.mini{padding:2px 8px;font-size:.78rem;margin-left:6px}
+.why{margin:.4rem 0;padding-left:1.1rem}.why li{margin:.3rem 0}
+.need{font-size:.78rem;color:var(--dim)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.lobby{margin:.6rem 0;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.06)}
+.lobby .row{margin-top:.35rem}
+.fx{font-family:var(--f-mono);font-size:.78rem;color:var(--lamp)}
+.dice i{font-style:normal;display:inline-block;min-width:1.6em;text-align:center;border:1px solid var(--line);border-radius:4px;margin-right:3px;font-family:var(--f-mono)}
+.dice i.s{border-color:var(--ok);color:var(--ok)}
+.secrets{font-size:.88rem}
+.log{max-height:240px;overflow:auto;font-size:.83rem;display:flex;flex-direction:column;gap:3px}
+.log div{border-left:2px solid var(--line);padding-left:6px}
+.log .n{color:var(--lamp);font-family:var(--f-mono);font-size:.7rem}
+details summary{cursor:pointer}
+/* значки дисциплин и кубы */
+.dic{display:inline-block;width:16px;height:16px;margin-right:5px;vertical-align:-3px;background:#a3202f;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.dice .die{width:38px;height:auto;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.dice .die.s{filter:drop-shadow(0 0 8px rgba(217,164,65,.6))}
+/* юридические логотипы */
+footer .darkpack{float:left;margin:0 12px 6px 0}
+.gen-dp{display:flex;align-items:center;gap:10px;margin-top:12px}.gen-dp img{width:44px;height:44px}
+.gen-ub img{width:96px;height:96px}

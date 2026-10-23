@@ -1,0 +1,22 @@
+/* ---- рассвет: часы, предупреждение, сцена ---- */
+.hud.warn .clock .big{color:#ffb35c}
+.hud.crit .clock .big{color:#ff5a4a;animation:dawnPulse 1s ease-in-out infinite}
+.hud.warn .homeway,.hud.crit .homeway{color:#ffb35c}
+.hud.crit .sky span{background:linear-gradient(90deg,#ff9b4a,#ff3b2f)!important}
+@keyframes dawnPulse{50%{opacity:.35;text-shadow:0 0 18px #ff5a4a}}
+#ovl{position:fixed;inset:0;z-index:60}
+.dawn-alert{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(10,6,8,.55);backdrop-filter:blur(2px)}
+.dawn-alert.lvl2{background:radial-gradient(900px 500px at 50% 120%,rgba(255,110,40,.45),rgba(10,6,8,.75))}
+.da-box{max-width:460px;border-radius:14px;padding:22px;border:1px solid #a0642c;background:#1a1012;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lvl2 .da-box{border-color:#ff5a3a;box-shadow:0 0 0 2px rgba(255,90,58,.5),0 20px 60px rgba(0,0,0,.6)}
+.da-box h2{font-size:1.6rem;margin:6px 0 8px;color:#ffcf8a}.lvl2 .da-box h2{color:#ff8a6a}
+.sun-scene{position:absolute;inset:0;display:grid;place-items:center;padding:16px;overflow:hidden;background:#fff3d6;animation:sunIn 1.6s ease-out}
+.sun-glow{position:absolute;inset:-20%;background:radial-gradient(circle at 50% 110%,#fff 0%,#ffd27a 25%,#ff8a3c 50%,#7a1f14 80%,#1a0606 100%);animation:sunRise 3s ease-out forwards}
+.sun-scene.death .sun-glow{background:radial-gradient(circle at 50% 105%,#fff 0%,#ffe2a0 30%,#ff9a50 55%,#c2401c 80%,#3a0a06 100%)}
+.sun-scene.meld .sun-glow{background:radial-gradient(circle at 50% 110%,#ffd27a 0%,#a2622c 35%,#3a2412 65%,#0e0a06 100%)}
+.sun-box{position:relative;max-width:560px;text-align:center;padding:26px;border-radius:16px;background:rgba(20,8,6,.72);border:1px solid rgba(255,200,140,.5);color:#fbe9d2}
+.sun-box h1{font-size:clamp(2rem,6vw,3.2rem);color:#fff1d8;margin:8px 0 12px;text-shadow:0 0 30px rgba(255,160,80,.8)}
+.sun-box p{font-size:1.08rem;line-height:1.55}.sun-box .eyebrow{color:#ffcf8a}
+@keyframes sunIn{from{background:#000}}
+@keyframes sunRise{from{transform:translateY(40%);opacity:.2}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sun-scene,.sun-glow,.hud.crit .clock .big{animation:none}}
