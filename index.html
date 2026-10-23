@@ -129,6 +129,54 @@ footer{margin-top:22px;max-width:1000px}
 .court-log{display:flex;flex-direction:column;gap:4px;font-size:.88rem;max-height:260px;overflow:auto}
 .court-log p{border-left:2px solid var(--line);padding-left:6px}
 .card.case{border-color:#7a6430}
+/* полноэкранное создание персонажа */
+#setup{position:fixed;inset:0;z-index:40;overflow:auto;background:radial-gradient(1200px 700px at 50% -10%,#2a1520 0%,#120d16 45%,#0a0a10 100%);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body.su-open{overflow:hidden}
+.su-in{max-width:1180px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:26px 120px;display:flex;flex-direction:column;gap:26px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 22px;font-family:var(--f-mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps li.on span{color:var(--lamp)}
+.steps li+li::before{content:"";width:22px;height:1px;background:var(--line)}
+.steps button{all:unset;cursor:pointer;color:var(--ink)}
+.steps button:hover{color:var(--lamp)}
+.su-head h1{font-family:var(--f-display);font-size:clamp(2rem,5vw,3.4rem);line-height:1.02;letter-spacing:.01em}
+.su-head h1 em{font-style:normal;color:var(--blood);text-shadow:0 0 30px rgba(216,64,79,.35)}
+.su-head p{color:#bdb6c4;margin-top:10px;max-width:60ch;font-size:1.05rem}
+.su-group h2{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.su-group h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.su-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.su-grp{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.su-pas{font-size:.86rem;color:#d6cfdc;border-top:1px solid color-mix(in srgb,var(--cc) 30%,#2a2532);padding-top:8px;margin-top:2px}
+.su-card,.su-big{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:18px 18px 16px;border-radius:12px;
+  background:linear-gradient(160deg,rgba(255,255,255,.035),rgba(255,255,255,0) 60%),#15131b;border:1px solid #2a2532;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s}
+.su-card::before,.su-big::before{content:"";position:absolute;inset:auto -30% -60% -30%;height:120%;background:radial-gradient(closest-side,var(--cc),transparent);opacity:0;transition:opacity .3s}
+.su-card:hover,.su-big:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--cc) 55%,#2a2532)}
+.su-card:hover::before,.su-big:hover::before{opacity:.12}
+.su-card.on,.su-big.on{border-color:var(--cc);box-shadow:0 0 0 1px var(--cc),0 14px 40px -12px color-mix(in srgb,var(--cc) 60%,transparent)}
+.su-card.on::before,.su-big.on::before{opacity:.2}
+.su-card>*,.su-big>*{position:relative}
+.emb{width:64px;height:64px;flex:none;filter:drop-shadow(0 0 10px color-mix(in srgb,currentColor 45%,transparent))}
+.su-name{font-family:var(--f-display);font-size:1.45rem;color:var(--ink);line-height:1.1}
+.su-line{color:#bdb6c4;font-size:.95rem}
+.su-disc{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.su-disc i{font-style:normal;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid color-mix(in srgb,var(--cc) 40%,#2a2532);color:color-mix(in srgb,var(--cc) 70%,#e8e3d6)}
+.su-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.su-big{padding:26px 24px;gap:10px}
+.su-big .emb{width:72px;height:72px}
+.su-big .su-name{font-size:2rem}
+.su-tag{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--cc)}
+.su-big ul{margin:4px 0 0;padding-left:18px;color:#cfc8d6;gap:6px}
+.su-note{color:var(--dim);max-width:70ch}
+.su-bar{position:fixed;left:0;right:0;bottom:0;z-index:41;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:12px max(18px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));
+  background:rgba(10,10,16,.92);backdrop-filter:blur(8px);border-top:1px solid #2a2532}
+.su-bar .emb{width:36px;height:36px}
+.su-bar-t{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;font-size:.92rem}
+.su-bar-t b{font-family:var(--f-display);font-size:1.15rem}
+.su-bar .primary{padding:10px 22px;font-size:1rem}
+@media (prefers-reduced-motion:reduce){.su-card,.su-big{transition:none}}
+
 
 </style>
 </head>
@@ -151,6 +199,7 @@ footer{margin-top:22px;max-width:1000px}
     <div id="zoom" hidden><button data-z="near">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
   <div class="col" id="side"></div>
 </div>
+<div id="setup" hidden></div>
 <footer class="hint"><a href="v09.html" style="color:var(--dim)">Прошлая версия v0.9 «Город»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
 <script>
 /* =====================================================================
@@ -1524,6 +1573,50 @@ function scoreOf(a,W){if(!a.alive)return {total:0,parts:["погиб"]};const P=
 function endGame(result){G.phase="end";G.result=result;G.final=facWinner();render()}
 
 
+/* ============================ СОЗДАНИЕ ПЕРСОНАЖА: полноэкранный выбор ============================
+   Эмблемы — собственные рисунки игры, не официальные знаки кланов. */
+const EMB={
+ tor:'<path d="M14 10c6 3 14 3 20 0 2 9 1 19-4 25-3 3-9 3-12 0-5-6-6-16-4-25z"/><path d="M17 20c2-1.5 4-1.5 6 0M25 20c2-1.5 4-1.5 6 0"/><path d="M19 29c3 2 7 2 10 0"/><path d="M34 10c3 4 4 9 3 13"/>',
+ ven:'<circle cx="24" cy="21" r="11"/><circle cx="24" cy="21" r="6.5"/><path d="M24 14.5v13M17.5 21h13"/><path d="M17 31c-.5 4 1 7 2 7s1.5-3 1-6M28 32c0 3 1 5 2 5s1-2 .5-5"/>',
+ nos:'<path d="M8 34C8 18 15 9 24 9s16 9 16 25"/><path d="M14 34c0-9 4-15 10-15s10 6 10 15"/><path d="M18 27c3-2.5 9-2.5 12 0-3 2.5-9 2.5-12 0z"/><circle cx="24" cy="27" r="1.4"/>',
+ bru:'<rect x="7" y="17" width="15" height="13" rx="6.5"/><rect x="26" y="17" width="15" height="13" rx="6.5"/><path d="M22 20l4 -4M22 27l4 4"/><path d="M11 23.5h7M30 23.5h7"/>',
+ tre:'<path d="M8 15c5-2 11-2 16 2 5-4 11-4 16-2v19c-5-2-11-2-16 2-5-4-11-4-16-2z"/><path d="M24 17v19"/><path d="M24 4c3 4 4 6 4 8a4 4 0 0 1-8 0c0-2 1-4 4-8z"/>',
+ gan:'<ellipse cx="24" cy="31" rx="7.5" ry="6.5"/><ellipse cx="13" cy="21" rx="3.2" ry="4.2" transform="rotate(-20 13 21)"/><ellipse cx="20" cy="15" rx="3.2" ry="4.4"/><ellipse cx="28" cy="15" rx="3.2" ry="4.4"/><ellipse cx="35" cy="21" rx="3.2" ry="4.2" transform="rotate(20 35 21)"/>',
+ tzi:'<rect x="17" y="6" width="14" height="7" rx="3"/><rect x="16" y="15.5" width="16" height="7" rx="3"/><rect x="17" y="25" width="14" height="7" rx="3"/><rect x="19" y="34.5" width="10" height="6" rx="3"/><path d="M10 9h4M10 19h4M34 28h4M34 37h4"/>',
+ cam:'<path d="M8 16L24 7l16 9z"/><path d="M10 16h28M11 38h26M9 41h30"/><path d="M14 18v19M21 18v19M27 18v19M34 18v19"/>',
+ ana:'<path d="M24 6c5 6 8 10 8 15a8 8 0 0 1-16 0c0-3 1.5-5 3-7 .5 3 2 4.5 3 4.5 0-4 1-8 2-12.5z"/><path d="M20 30h8l-2 12h-4z"/><path d="M18 30h12"/>',
+ final:'<path d="M20 14h8v24h-8z"/><path d="M24 14V9"/><path d="M17 38h14M15 41h18"/><path d="M27 6c-2 1-3 2-3 3"/>',
+ respawn:'<path d="M20 22h8v16h-8z"/><path d="M24 22c-3-3-3-6 0-10 3 4 3 7 0 10z"/><path d="M17 38h14M15 41h18"/><path d="M12 16l3 2M36 16l-3 2M24 4v3"/>',
+};
+const emb=(k,col)=>`<svg class="emb" viewBox="0 0 48 48" aria-hidden="true" style="color:${col}"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${EMB[k]}</g></svg>`;
+const CLAN_GROUPS=[["Правители и повелители",["ven","tzi"]],["Бойцы и защитники",["bru","gan"]],["Соблазнители",["tor"]],["Искатели знания",["tre"]],["Скрытые",["nos"]]];
+const DISC={tor:["Прорицание","Стремительность","Присутствие"],ven:["Доминирование","Стойкость","Присутствие"],nos:["Анимализм","Затемнение","Мощь"],
+  bru:["Стремительность","Мощь","Присутствие"],tre:["Прорицание","Доминирование","Магия крови"],gan:["Анимализм","Стойкость","Превращение"],tzi:["Анимализм","Доминирование","Превращение"]};
+function setupSteps(n){const st=["Клан","Тайная сторона","Правила смерти"];
+  return `<ol class="steps">${st.map((t,i)=>`<li class="${i===n?"on":i<n?"done":""}">${i<n?`<button onclick="setupBack(${i})">${i+1}. ${t}</button>`:`<span>${i+1}. ${t}</span>`}</li>`).join("")}</ol>`}
+function setupBack(i){const S=G.setup;if(i<=0){S.clan=null;S.fac=null}if(i<=1){S.fac=null}S.death=null;render()}
+function setupScreen(){const S=G.setup;const sel=S.sel||{};
+  if(!S.clan){const c=sel.clan?CLANS[sel.clan]:null;
+    return `<div class="su-in">${setupSteps(0)}<header class="su-head"><h1>Выберите <em>клан</em></h1><p>Клан — это ваша кровь, ваша сила и ваше проклятие. От него зависит, как вас видят на улицах и что вы умеете, когда город засыпает.</p></header>
+     <div class="su-grid">${CLAN_GROUPS.flatMap(([g,ids])=>ids.map(id=>{const C=CLANS[id];return `<button class="su-card${sel.clan===id?" on":""}" style="--cc:${C.color}" onclick="G.setup.sel={...G.setup.sel,clan:'${id}'};render()">
+       <span class="su-grp">${g}</span>${emb(id,C.color)}<span class="su-name">${C.name}</span><span class="su-line">${C.line}</span><span class="su-disc">${DISC[id].map(d=>`<i>${d}</i>`).join("")}</span>
+       <span class="su-pas"><b>Способность.</b> ${C.pas}</span></button>`})).join("")}</div>
+     <div class="su-bar">${c?`${emb(sel.clan,c.color)}<div class="su-bar-t"><b style="color:${c.color}">${c.name}</b><span class="hint">${c.lean>=.5?"Обычно тянется к анархам":"Обычно держится Камарильи"}</span></div><button class="primary" onclick="G.setup.clan='${sel.clan}';render()">Дальше</button>`:'<span class="hint">Выберите клан, чтобы продолжить.</span>'}</div></div>`}
+  if(!S.fac){const C=CLANS[S.clan];const f=sel.fac;
+    const card=(id,title,tag,lines)=>`<button class="su-big${f===id?" on":""}" style="--cc:${FAC[id].color}" onclick="G.setup.sel={...G.setup.sel,fac:'${id}'};render()">${emb(id,FAC[id].color)}<span class="su-name">${title}</span><span class="su-tag">${tag}</span><ul>${lines.map(l=>`<li>${l}</li>`).join("")}</ul></button>`;
+    return `<div class="su-in">${setupSteps(1)}<header class="su-head"><h1>На кого вы работаете <em>на самом деле</em></h1><p>При дворе все кланяются Князю. Но каждую ночь вы тайно сдвигаете районы к одной из сторон. Об этом не знает никто — пока вас не выдадут следы.</p></header>
+     <div class="su-two">${card("cam","Камарилья","Порядок, Маскарад, Элизиум",["Районы в центре держатся крепче","Районы приносят Статус, деньги и спокойный город","Быть камарильщиком при дворе не стыдно — это видимая сторона"])}
+     ${card("ana","Анархи","Свобода, улица, своя правда",["Окраины, трущобы и порт — ваша естественная земля","Районы приносят деньги, находки и убежища на рассвете","Если двор узнает, вас разоблачат и лишат защиты"])}</div>
+     <p class="su-note">${C.name} ${C.lean>=.5?"обычно тянутся к анархам":"обычно держатся Камарильи"}, но решать вам. Сменить сторону можно и потом, в убежище, — за деньги или Статус.</p>
+     <div class="su-bar">${f?`${emb(f,FAC[f].color)}<div class="su-bar-t"><b style="color:${FAC[f].color}">${FAC[f].name}</b><span>Ваш выбор останется тайной.</span></div><button class="primary" onclick="G.setup.fac='${f}';render()">Дальше</button>`:'<span class="hint">Выберите сторону, чтобы продолжить.</span>'}</div></div>`}
+  const d=sel.death;
+  const card=(id,title,tag,lines)=>`<button class="su-big${d===id?" on":""}" style="--cc:${id==="final"?"#c9c2b0":"#e2a64e"}" onclick="G.setup.sel={...G.setup.sel,death:'${id}'};render()">${emb(id,id==="final"?"#c9c2b0":"#e2a64e")}<span class="su-name">${title}</span><span class="su-tag">${tag}</span><ul>${lines.map(l=>`<li>${l}</li>`).join("")}</ul></button>`;
+  return `<div class="su-in">${setupSteps(2)}<header class="su-head"><h1>Что будет, <em>если вас убьют</em></h1><p>Город не прощает ошибок: рассвет на улице, приговор Князя, Маскарад, который рухнул из-за вас.</p></header>
+   <div class="su-two">${card("final","Окончательная смерть","Одна жизнь",["Погибли — партия окончена","Соперники тоже умирают насовсем","Вырезать всех врагов — тоже путь к победе"])}
+   ${card("respawn","Новый неонат","Кровь продолжается",["Погибли — играете за нового Сородича своего клана","Он начинает почти с нуля: Статус 1, без находок","Партия идёт до конца, что бы ни случилось"])}</div>
+   <div class="su-bar">${d?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${FAC[S.fac].name} · ${d==="final"?"одна жизнь":"новый неонат"}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="G.setup.death='${d}';startGame()">Выйти в ночь</button>`:'<span class="hint">Выберите правило, чтобы начать.</span>'}</div></div>`}
+
+
 /* ============================ ИНТЕРФЕЙС ============================ */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const KICON={c:"☉",i:"◆",p:"⌖"};
@@ -1651,11 +1744,12 @@ function endCard(){const F=G.final||facWinner();const rows=[G,...G.B].map(a=>({a
    <div class="row"><button class="primary" onclick="newCity()">Новый город</button><button onclick="newCity(G.seed)">Этот же город</button></div></div>`}
 function render(){if(!G)return;$("#hud").innerHTML=hud();let s="";
   if(G.phase==="gen"||G.phase==="built")s=genCard();
-  else if(G.phase==="setup")s=setupCard();
+  else if(G.phase==="setup")s="";
   else if(G.phase==="walk")s=(G.ritualMode?`<div class="card intro"><h2>Ритуал</h2><p>Нажмите на любой открытый район: вы увидите его и соседние, вместе с невидимыми.</p><button onclick="G.ritualMode=false;render()">Отмена</button></div>`:"")+pickCard()+encCard()+(!G.introDone&&!G.enc?introCard():"")+summonsCard()+caseCard(G.pos==="0,0"&&!G.enc&&!G.pick)+(G.enc||G.pick?"":hereCard()+actionsCard())+handCard()+rivalsCard()+journalCard();
   else if(G.phase==="court")s=pickCard()+(G.pick?"":courtCard())+handCard();
   else if(G.phase==="day")s=dayCard()+caseCard(false)+rivalsCard()+journalCard();
   else if(G.phase==="end")s=endCard()+journalCard();
+  {const su=$("#setup");if(su){const on=G.phase==="setup";su.hidden=!on;if(on){su.innerHTML=setupScreen();document.body.classList.add("su-open")}else{su.innerHTML="";document.body.classList.remove("su-open")}}}
   $("#side").innerHTML=s;$("#zoom").hidden=!G.clan;document.querySelectorAll("#zoom button").forEach(b=>b.classList.toggle("on",b.dataset.z===G.zoom));
   drawFog();drawMarks();save()}
 function drawMarks(){if(!G||!$("#marks"))return;let s="";
