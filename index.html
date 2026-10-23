@@ -2250,8 +2250,8 @@ function canSearch(){return G.city.map[G.pos].t!=="ely"&&(G.searchedTonight||{})
 function allyHavenAt(k){const a=myAlly();return a&&G.R[a].haven===k?a:null}
 function caughtByDawn(){const h=G.city.map[G.pos];const cover=["cem","old","slum","ind","port","res","rail","market","theatre","hosp","uni"].includes(h.t);
   let p=cover?.5:.2;if(G.clan==="nos")p+=.25;if(G.hunger>=4)p-=.1;
-  if(Math.random()<p){const lost=G.items.splice(0,Math.ceil(G.items.length/2));G.hunger=CONFIG.hungerMax-1;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);G.status=clamp(G.status-1,0,5);G.burned=true;
-    G.dayNote=`Первый луч касается вашей руки, когда вы уже ломаете дверь подвала в «${h.name}». Весь день вы лежите в темноте среди труб, а солнце жжёт сквозь щели. Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1${lost.length?", половина сумки потеряна":""}. Следующей ночью вы очнётесь только к полуночи.`;
+  if(Math.random()<p){G.hunger=CONFIG.hungerMax-1;G.alarm=clamp(G.alarm+2,0,CONFIG.alarmMax);G.status=clamp(G.status-1,0,5);G.burned=true;
+    G.dayNote=`Первый луч касается вашей руки, когда вы уже ломаете дверь подвала в «${h.name}». Весь день вы лежите в темноте среди труб, а солнце жжёт сквозь щели. Вы выжили — едва. Голод почти на пределе, Тревога +2, Статус −1. Следующей ночью вы очнётесь только к полуночи.`;
     addLog(`<b>Рассвет застаёт вас вне убежища.</b> ${G.dayNote}`)}
   else{G.phase="end";G.result="dead";G.deathText=`Вы не успели. Рассвет застаёт вас в «${h.name}»${cover?", и ни одна дверь не открылась вовремя":", где негде спрятаться"}. Солнце встаёт над городом, и через минуту от вас остаётся только пепел на асфальте.`;addLog(`<b>Окончательная смерть.</b> ${G.deathText}`)}}
 // дорога домой — напрямую, без событий
