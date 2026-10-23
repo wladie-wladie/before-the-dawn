@@ -147,6 +147,7 @@ body.su-open{overflow:hidden}
 .su-group h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
 .su-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .su-grp{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.emb-img{object-fit:contain}
 .su-pas{font-size:.86rem;color:#d6cfdc;border-top:1px solid color-mix(in srgb,var(--cc) 30%,#2a2532);padding-top:8px;margin-top:2px}
 .su-card,.su-big{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:18px 18px 16px;border-radius:12px;
   background:linear-gradient(160deg,rgba(255,255,255,.035),rgba(255,255,255,0) 60%),#15131b;border:1px solid #2a2532;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s}
@@ -1588,7 +1589,12 @@ const EMB={
  final:'<path d="M20 14h8v24h-8z"/><path d="M24 14V9"/><path d="M17 38h14M15 41h18"/><path d="M27 6c-2 1-3 2-3 3"/>',
  respawn:'<path d="M20 22h8v16h-8z"/><path d="M24 22c-3-3-3-6 0-10 3 4 3 7 0 10z"/><path d="M17 38h14M15 41h18"/><path d="M12 16l3 2M36 16l-3 2M24 4v3"/>',
 };
-const emb=(k,col)=>`<svg class="emb" viewBox="0 0 48 48" aria-hidden="true" style="color:${col}"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${EMB[k]}</g></svg>`;
+// Свои значки кланов: положите файлы icons/clans/<клан>.svg или .png рядом с игрой (ven, tor, nos, bru, tre, gan, tzi) —
+// игра покажет их вместо встроенных эмблем. Например, официальные символы из набора Dark Pack.
+const ICON_OK={};
+(function probeIcons(){for(const id of Object.keys(CLANS))for(const ext of ["svg","png","webp"]){const url=`icons/clans/${id}.${ext}`;const im=new Image();
+  im.onload=()=>{if(!ICON_OK[id]){ICON_OK[id]=url;if(G&&G.phase==="setup")render()}};im.src=url}})();
+const emb=(k,col)=>ICON_OK[k]?`<img class="emb emb-img" src="${ICON_OK[k]}" alt="" style="color:${col}">`:`<svg class="emb" viewBox="0 0 48 48" aria-hidden="true" style="color:${col}"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${EMB[k]}</g></svg>`;
 const CLAN_GROUPS=[["Правители и повелители",["ven","tzi"]],["Бойцы и защитники",["bru","gan"]],["Соблазнители",["tor"]],["Искатели знания",["tre"]],["Скрытые",["nos"]]];
 const DISC={tor:["Прорицание","Стремительность","Присутствие"],ven:["Доминирование","Стойкость","Присутствие"],nos:["Анимализм","Затемнение","Мощь"],
   bru:["Стремительность","Мощь","Присутствие"],tre:["Прорицание","Доминирование","Магия крови"],gan:["Анимализм","Стойкость","Превращение"],tzi:["Анимализм","Доминирование","Превращение"]};
