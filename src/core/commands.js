@@ -49,7 +49,7 @@ CMD.move={can:(p,a)=>free(p)||(!a.to||!nbrs(p.pos).includes(a.to)?"туда не
     const h=G.city.map[k];if(first)addLog(`Вы впервые в районе «${h.name}» (${TYPES[h.t].n}).`);emit("moved",{pid:p.id,to:k,first});
     if(!a.rush&&k==="0,0"&&gatherOpen()){startCourt();return}
     if(!a.rush&&meetCheck(p))return;
-    if(!a.rush&&h.t!=="ely"&&firstT&&Math.random()<CONFIG.walkEnc){const [t,x,c]=pick(STREET);p.enc={kind:"ev",h:k,e:{t,x,c:withPass(c)},res:null};emit("enc",{pid:p.id,kind:"street"});return}
+    if(!a.rush&&h.t!=="ely"&&firstT&&Math.random()<CONFIG.walkEnc){const [t,x,c]=pick(STREET);p.enc={kind:"ev",h:k,e:enrichEvent(p,{t,x,c:withPass(c)}),res:null};emit("enc",{pid:p.id,kind:"street"});return}
     if(G.time===CONFIG.nightEnd-2)addLog("<b>Небо на востоке сереет.</b> Час до рассвета.");
     if(warn)return;
     if(G.time>=CONFIG.nightEnd)dawn()}};
@@ -59,17 +59,21 @@ CMD.search={can:p=>free(p)||(here(p).t==="ely"?"в Элизиуме не осм�
   run:p=>{p.searched[p.pos]=G.night;const k=p.pos;
     const tr=traceHere(p,k);if(tr&&Math.random()<.6){tr.found.push(p.id);const c=traceCard(tr);p.hand.push(c);
       p.enc={kind:"note",h:k,e:{t:"След",x:""},res:{text:`Вы находите то, что кто-то хотел спрятать: ${c.name.toLowerCase()}. Примета: ${descOf(c.clan)}.`,fx:`в руку: ${c.name}`,choice:"Осмотреться"}};emit("enc",{pid:p.id,kind:"trace"});humanSpend(p,1);return}
-    const ev=eventFor(p,k);p.enc={kind:"ev",h:k,e:ev,res:null};emit("enc",{pid:p.id,kind:"search"});humanSpend(p,1)}};
+    const ev=enrichEvent(p,eventFor(p,k));p.enc={kind:"ev",h:k,e:ev,res:null};emit("enc",{pid:p.id,kind:"search"});humanSpend(p,1)}};
 CMD.choose={can:(p,a)=>!p.enc?"выбирать не из чего":p.enc.res?"выбор уже сделан":!p.enc.e.c[a.i]?"нет такого варианта":p.enc.e.c[a.i].dis?"сейчас недоступно":null,
   run:(p,a)=>{const E=p.enc;if(E.kind==="infl")return chooseInfluence(p,a.i);if(E.kind==="meet")return chooseMeet(p,a.i);
-    const ch=E.e.c[a.i];let o=ch.o,d=null,ok=null,X=null;if(ch.ok){X=check(p,poolSpec(ch.t));d=X.d;ok=X.ok;o=ok?ch.ok:ch.fail}
-    const r=outcome(p,o,E.h);const bf=X?beastFx(p,X):"";E.res={text:r.text,dice:d,roll:X&&X.R,ok,fx:[r.fx,bf].filter(Boolean).join(" · "),choice:ch.t};
+    const ch=E.e.c[a.i];let o=ch.o,d=null,ok=null,X=null,pre="",extra="";
+    if(ch.disc){const R=rouse(p);extra=R.fx;pre=ch.dx+" ";ok=true}
+    else if(ch.ok){const sp=poolSpec(ch.t);const S=sureOf(p,sp);
+      if(S){const n=Math.floor(S.n/2);X={d:null,ok:true,n,R:{v5:1,sure:1,label:S.label,parts:S.parts,mod:S.mod,pool:S.n,hun:0,need:2,succ:n}}}else X=check(p,sp);
+      d=X.d;ok=X.ok;o=ok?ch.ok:ch.fail}
+    const r=outcome(p,o,E.h);const bf=X?beastFx(p,X):"";E.res={text:pre+r.text,dice:d,roll:X&&X.R,ok,fx:[r.fx,bf,extra].filter(Boolean).join(" · "),choice:ch.t};
     if(r.tm){if(p.control==="human")advance(r.tm);else p.busy=(p.busy||0)+r.tm}
     emit("result",{pid:p.id,ok,dice:d})}};
 CMD.close={can:p=>!p.enc?"нечего закрывать":p.enc.res?null:"сначала сделайте выбор",
   run:p=>{p.enc=null;
     if(p.control==="human"&&p.alarm>=CONFIG.alarmMax){endGame("lost");return}
-    if(p.hunger>=CONFIG.hungerMax){p.hunger=2;p.alarm=clamp(p.alarm+2,0,CONFIG.alarmMax);loudAt(p.pos,p);if(isMe(p))addLog("<b>Зверь вырывается наружу.</b> Вы приходите в себя в чужом подъезде. Тревога +2.");emit("beast",{pid:p.id})}
+    if(p.hunger>=CONFIG.hungerMax)beastRises(p)
     if(p.control==="human"&&G.time>=CONFIG.nightEnd)dawn()}};
 CMD.hunt={can:p=>free(p)||(p.pos==="0,0"?"в Элизиуме не охотятся":null),
   run:p=>{const h=here(p);const busy=["club","res","market","theatre","rail"].includes(h.t);const X=check(p,"HUNT",(isV5()?0:1)-(threatLvl()>=6?1:0));const d=X.d,ok=X.ok;
@@ -77,7 +81,10 @@ CMD.hunt={can:p=>free(p)||(p.pos==="0,0"?"в Элизиуме не охотят�
     const bf=beastFx(p,X);if(isMe(p))addLog(`Охота в «${h.name}»${X.R?` (${X.R.label}, успехов ${X.R.succ})`:` [${d.join(" ")}]`}: ${bf?bf+". ":""}${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1."):"вас заметили. Тревога +1."}`);
     emit("hunt",{pid:p.id,ok,dice:d});
     if(humanSpend(p,2))return;if(p.control==="human"&&p.alarm>=CONFIG.alarmMax){endGame("lost");return}
-    if(p.hunger>=CONFIG.hungerMax){p.hunger=2;p.alarm=clamp(p.alarm+2,0,CONFIG.alarmMax);loudAt(p.pos,p)}}};
+    if(p.hunger>=CONFIG.hungerMax)beastRises(p)}};
+// Голод 5: Зверь рвётся наружу. В V5 его можно удержать (Самообладание + Решимость)
+function beastRises(p){if(holdBeast(p)){p.hunger=CONFIG.hungerMax-1;if(isMe(p))addLog("<b>Зверь рвётся наружу</b>, но вы удерживаете его — Самообладание и Решимость. Голод 4, ненадолго.");return}
+  p.hunger=2;p.alarm=clamp(p.alarm+2,0,CONFIG.alarmMax);loudAt(p.pos,p);if(isMe(p))addLog("<b>Зверь вырывается наружу.</b> Вы приходите в себя в чужом подъезде. Тревога +2.");emit("beast",{pid:p.id})}
 CMD.wait={can:p=>free(p),run:p=>{if(isMe(p))addLog("Вы ждёте, наблюдая за улицей.");if(humanSpend(p,1))return;if(p.pos==="0,0"&&gatherOpen()&&p.control==="human")startCourt()}};
 CMD.sleep={can:p=>free(p)||(p.pos!==p.haven?"спать можно только в убежище":null),run:p=>{G.time=CONFIG.nightEnd;dawn()}};
 CMD.observe={can:p=>free(p),run:p=>{p.obs={c:p.pos,until:G.time+3};const seen=visibleTo(p,true);
@@ -95,7 +102,12 @@ CMD.switchSide={can:(p,a)=>free(p)||(p.pos!==p.haven?"только в убежи
 CMD.influence={can:p=>free(p)||(!G.dist[p.pos]?"Элизиум ничей и не меняет хозяина":null),
   run:p=>{const h=here(p),R=DIST[h.t],key=R.key;const D=G.dist[p.pos];const c=[];const base=2+(p.status>=6?1:0)-(p.hunger>=4?1:0);
     const nd=(inf,m)=>isV5()?poolOf(p,inflSpec(p,inf),m).n:Math.max(1,base+m);
-    c.push({t:`Работать без вложений · ${nd({},0)} куб.`,inf:{}});
+    if(isV5()){const S=["slum","port","market","edge","rail","ind","club"],E2=["gov","biz","theatre","uni","old","cath","res","hosp"];
+      c.push({t:`Уговорами · ${nd({how:"pers"},0)} куб.`,inf:{how:"pers"}});
+      if(S.includes(h.t))c.push({t:`Через людей улицы · ${nd({how:"street"},0)} куб.`,inf:{how:"street"}});
+      if(E2.includes(h.t))c.push({t:`Через приличия и нужных людей · ${nd({how:"etiq"},0)} куб.`,inf:{how:"etiq"}});
+      c.push({t:`Страхом · ${nd({how:"intim"},0)} куб. · при провале шум`,inf:{how:"intim"}})}
+    else c.push({t:`Работать без вложений · ${nd({},0)} куб.`,inf:{}});
     if(key.card){const cs=p.hand.filter(x=>x.k===key.card&&!x.dirty&&!x.trace);if(cs.length)c.push({t:`Отдать ${KIND[key.card]} «${cs[0].name}» · ${nd({card:1},2)} куб.`,inf:{card:cs[0].id}})}
     if(key.money)c.push({t:`Заплатить ${key.money} денег · ${nd({money:1},2)} куб.`,inf:{money:key.money},dis:p.money<key.money});
     if(p.clan==="gan"&&["park","edge"].includes(h.t))c.push({t:`Пометить угодья по-звериному · ${nd({beast:1},2)} куб.`,inf:{beast:1}});
@@ -105,7 +117,7 @@ CMD.influence={can:p=>free(p)||(!G.dist[p.pos]?"Элизиум ничей и н�
 function chooseInfluence(p,i){const E=p.enc,ch=E.e.c[i];const inf=ch.inf;let mod=0;
   if(inf.card){p.hand=p.hand.filter(x=>x.id!==inf.card);mod+=2}if(inf.money){p.money-=inf.money;mod+=2}if(inf.beast)mod+=2;
   const X=check(p,inflSpec(p,inf),mod,1);const d=X.d;const n=X.R?Math.floor((X.n+1)/2):X.n;if(n)addInfluence(p,p.pos,n,p.fac);leaveTrace(p,p.pos,p.fac);
-  let fx="";if(!n&&(X.R?X.R.bestial:d.includes(1))){p.alarm++;loudAt(p.pos,p);fx="Тревога +1"}else{const bf=beastFx(p,X);if(bf)fx=bf}
+  let fx="";if(!n&&(X.R?(X.R.bestial||inf.how==="intim"):d.includes(1))){p.alarm++;loudAt(p.pos,p);fx="Тревога +1"}else{const bf=beastFx(p,X);if(bf)fx=bf}
   E.res={dice:d,roll:X.R,ok:n>0,choice:ch.t,text:n?`Район поддаётся: ${n} ${n===1?"шаг":"шага"} к вашей стороне. Утром город увидит, к кому он склонился.`:"Ничего не вышло. Люди здесь не готовы слушать.",fx};
   emit("result",{pid:p.id,ok:n>0,dice:d});humanSpend(p,2)}
 CMD.rumor={can:(p,a)=>free(p)||(!TALK.includes(here(p).t)?"слухи пускают в людных местах: бар, клуб, рынок, вокзал":!p.hand.length?"нечего рассказать":a.card&&!p.hand.some(c=>c.id===a.card)?"такой карты нет":null),
@@ -122,10 +134,11 @@ CMD.seek={can:(p,a)=>free(p)||(p.clan!=="nos"?"только Носферату �
 function meetScene(p,b){b.met=G.night;const shown=b.disguise||b.clan;const C=CLANS[shown].name;const mine=b.hand.find(c=>c.clan===p.clan&&!c.hold);
   const c=[];let x=`Навстречу выходит Сородич клана ${C}. Вы видели его в Элизиуме. ${b.exposed?"Двор знает, что он работает на анархов. ":""}`;
   if(mine&&p.money>=3&&Math.random()<.55){x+=`Он показывает вам «${mine.name}» — это про ваш клан. «Три монеты — и это останется у меня. Иначе ляжет в дело Князя».`;
-    c.push({t:"Заплатить 3",m:"pay",card:mine.id},{t:"Отказать",m:"refuse",card:mine.id})}
+    c.push({t:"Заплатить 3",m:"pay",card:mine.id});if(isV5())c.push({t:"Напомнить ему об обычаях двора",m:"etiq",card:mine.id,spec:"man+etiq"});c.push({t:"Отказать",m:"refuse",card:mine.id})}
   else{c.push({t:"Предложить обмен картами",m:"trade"});c.push({t:"Купить у него карту · 3 денег",m:"buy",dis:p.money<3});
     if(p.hand.some(x=>x.clan===b.clan))c.push({t:"Пригрозить уликой против его клана",m:"threat"});
-    if(p.clan==="bru")c.push({t:"Отобрать карту силой",m:"steal",roll:1});
+    if(isV5()){c.push({t:"Уговорить отдать карту даром",m:"coax",spec:"cha+pers"});if(!(p.known&&p.known[b.id]))c.push({t:"Прочитать его: на кого он работает",m:"read",spec:"wit+insight"});c.push({t:"Запугать",m:"scare",spec:"cha+intim"})}
+    if(p.clan==="bru")c.push({t:"Отобрать карту силой",m:"steal",roll:1,spec:"str+brawl+D:Мощь"});
     c.push({t:"Разойтись",m:"leave"})}
   p.enc={kind:"meet",h:p.pos,b:b.id,e:{t:`Сородич клана ${C}`,x,c},res:null};emit("enc",{pid:p.id,kind:"meet",bot:b.id})}
 function botValue(b,card){let v=1;if(card.clan&&card.clan!==b.clan&&card.clan!=="mortal")v+=1;if(card.clan===b.clan)v+=2;if(G.case&&freeCells().some(cl=>fits(card,cl)))v+=1;return v}
@@ -136,6 +149,19 @@ function chooseMeet(p,i){const E=p.enc,ch=E.e.c[i];const b=actorById(E.b);let te
   else if(ch.m==="buy"){const s=b.hand.filter(c=>!c.dirty&&botValue(b,c)<=2);if(s.length){const c=pick(s);b.hand=b.hand.filter(x=>x!==c);p.hand.push(c);p.money-=3;b.money+=3;text=`Он продаёт вам «${c.name}».`;fx=`в руку: ${c.name} · Деньги −3`}else text="«Мне нечего продать. Всё, что у меня есть, пригодится самому»."}
   else if(ch.m==="threat"){const c=p.hand.find(x=>x.clan===b.clan);if(b.money>=3){b.money-=3;p.money+=3;text=`Он смотрит на «${c.name}» и молча отсчитывает три монеты.`;fx="Деньги +3"}else if(b.hand.length){const g=b.hand.filter(x=>!(x.dirty&&x.clan===b.clan));const gv=g.length?pick(g):null;if(gv){b.hand=b.hand.filter(x=>x!==gv);p.hand.push(gv);text=`Денег у него нет. Он отдаёт вам «${gv.name}».`;fx=`в руку: ${gv.name}`}else text="Ему нечем откупиться. Он запоминает ваше лицо."}b.grudge+=1}
   else if(ch.m==="steal"){const X=check(p,"str+brawl+D:Мощь",isV5()?0:1);d=X.d;ok=X.ok;E.roll=X.R;if(ok&&b.hand.length){const c=b.hand.splice(Math.floor(Math.random()*b.hand.length),1)[0];p.hand.push(c);text=`Короткая стычка в тени. «${c.name}» теперь у вас.`;fx=`в руку: ${c.name} · Тревога +1`}else{text="Он вырывается и уходит, зажимая рану.";fx="Тревога +1"}p.alarm++;loudAt(p.pos,p);b.grudge+=2}
+  else if(ch.m==="etiq"){const X=check(p,"man+etiq");d=X.d;ok=X.ok;E.roll=X.R;const c=b.hand.find(x=>x.id===ch.card);
+    if(ok){if(c)c.hold=true;text="Вы вполголоса напоминаете, что при дворе так не поступают — и что Князь не любит шантажистов. Он морщится и убирает карту. Пока она молчит."}
+    else{b.grudge+=2;text="«Обычаи — для тех, у кого нет козырей». Он уходит, и карта уходит с ним."}}
+  else if(ch.m==="coax"){const X=check(p,"cha+pers");d=X.d;ok=X.ok;E.roll=X.R;const s=b.hand.filter(c=>!c.dirty&&botValue(b,c)<=2);
+    if(ok&&s.length){const c=pick(s);b.hand=b.hand.filter(x=>x!==c);p.hand.push(c);text=`Слово за слово — и он сам протягивает вам «${c.name}»: «Считайте, что вы мне должны».`;fx=`в руку: ${c.name}`}
+    else if(ok)text="Он бы и рад, но отдавать ему нечего.";else{b.grudge+=1;text="Он смеётся вам в лицо: «Даром? При дворе даром только умирают»."}}
+  else if(ch.m==="read"){const X=check(p,"wit+insight");d=X.d;ok=X.ok;E.roll=X.R;
+    if(ok){p.known=p.known||{};p.known[b.id]=b.fac;text=`По тому, как он говорит о Князе и о Бароне, всё ясно: тайно он работает на ${b.fac==="ana"?"анархов":"Камарилью"}.`;fx="Двор: его сторона теперь видна вам"}
+    else text="Его лицо ничего не выдаёт. Старые Сородичи хорошо умеют молчать."}
+  else if(ch.m==="scare"){const X=check(p,"cha+intim");d=X.d;ok=X.ok;E.roll=X.R;
+    if(ok){if(b.money>=2){b.money-=2;p.money+=2;text="Вы подходите на шаг ближе, чем принято. Он отступает и откупается двумя монетами.";fx="Деньги +2"}
+      else{const g=b.hand.filter(x=>!(x.dirty&&x.clan===b.clan));const gv=g.length?pick(g):null;if(gv){b.hand=b.hand.filter(x=>x!==gv);p.hand.push(gv);text=`Денег у него нет. Он суёт вам «${gv.name}» и уходит быстрым шагом.`;fx=`в руку: ${gv.name}`}else text="Ему нечем откупиться, но он запомнит этот страх."}b.grudge+=1}
+    else{b.grudge+=2;text="Он не из пугливых. Теперь он ищет повод вам отомстить."}}
   else text="Вы киваете друг другу и расходитесь.";
   E.res={text,fx,dice:d,roll:E.roll||null,ok,choice:ch.t};E.roll=null;emit("result",{pid:p.id,ok,dice:d})}
 CMD.trade={can:(p,a)=>!p.tradeWith?"обмен не предлагали":a.cancel?null:!p.hand.some(c=>c.id===a.card)?"такой карты нет":null,

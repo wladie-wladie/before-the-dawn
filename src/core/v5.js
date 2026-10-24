@@ -45,10 +45,10 @@ const POOLS={"Внушить ему, что вы — проверка":"man+D:Д
   "Заглянуть в папку":"dex+larc","Помочь":"cha+pers","Изучить журнал":"int+inv","Стереть ему память":"man+D:Доминирование/subt","Осмотреть тело":"int+inv",
   "Поискать следы":"wit+inv","Покормиться":"HUNT","Пройти без спроса":"dex+stealth","Подняться к окну":"dex+ath","Посмотреть записи камеры":"int+inv",
   "Зайти":"res+aware","Зайти в подъезд":"wit+aware","Подняться":"dex+ath","Увести его за угол":"cha+subt","Обыскать":"wit+larc",
-  "Проследить за художником":"dex+stealth","Помочь искать":"wit+aware","Вскрыть замок":"dex+larc","Вытащить, что не сгорело":"com+ath",
+  "Проследить за художником":"dex+stealth","Помочь искать":"wit+aware","Вскрыть замок":"dex+larc","Вытащить, что не сгорело":"sta+ath",
   "Припугнуть":"cha+intim","Заглянуть":"wit+aware","Посмотреть в ответ":"com+D:Присутствие/intim","Заглянуть в сумку":"dex+larc","Открыть чемодан":"dex+larc",
   "Посмотреть, кто к ней подойдёт":"wit+aware","Взять его журнал":"dex+larc","Догнать отставшего":"dex+ath","Изучить":"int+inv","Подождать заказчика":"com+aware",
-  "Вытащить из огня":"com+ath","Пройти по верёвке":"dex+ath","Подойти":"cha+insight","Изучить круг":"int+occ","Подкрасться":"dex+stealth",
+  "Вытащить из огня":"sta+ath","Пройти по верёвке":"dex+ath","Подойти":"cha+insight","Изучить круг":"int+occ","Подкрасться":"dex+stealth",
   "Проследить, куда несут":"dex+stealth","Увести одного за контейнеры":"cha+subt","Полистать журнал досмотра":"int+inv","Подняться на маяк":"dex+ath",
   "Осмотреть":"wit+inv","Перепрыгнуть":"dex+ath","Отвести им глаза":"wit+D:Затемнение/stealth"};
 // запасной разбор по словам, если выбора нет в таблице
@@ -78,5 +78,41 @@ function check(a,spec,mod=0,need=2){
 function beastFx(a,X){if(!X.R)return "";if(X.R.messy){a.alarm=clamp(a.alarm+1,0,CONFIG.alarmMax);loudAt(a.pos,a);return "Грязный критический: Зверь проступает наружу. Тревога +1"}
   if(X.R.bestial){a.hunger=clamp(a.hunger+1,0,CONFIG.hungerMax);return "Звериный провал: Голод +1"}return ""}
 // для экрана: какой пул у варианта выбора
-function choiceSpec(a,E,ch){if(!E)return null;if(E.kind==="infl")return inflSpec(a,ch.inf||{});if(E.kind==="meet")return ch.roll?"str+brawl+D:Мощь":null;return ch.ok?poolSpec(ch.t):null}
-function inflSpec(a,inf){return inf.money?"man+fin":inf.card?"man+pers":inf.beast?(a.clan==="tre"?"int+D:Магия крови/occ":"cha+D:Анимализм/anim"):"cha+pers"}
+function choiceSpec(a,E,ch){if(!E)return null;if(E.kind==="infl")return inflSpec(a,ch.inf||{});if(E.kind==="meet")return ch.spec||(ch.roll?"str+brawl+D:Мощь":null);return ch.ok?poolSpec(ch.t):null}
+function inflSpec(a,inf){return inf.money?"man+fin":inf.card?"man+pers":inf.beast?(a.clan==="tre"?"int+D:Магия крови/occ":"cha+D:Анимализм/anim"):inf.how==="street"?"cha+street":inf.how==="etiq"?"man+etiq":inf.how==="intim"?"cha+intim":"cha+pers"}
+
+/* ---------- лист в диалогах: дисциплины, «уверенно», подсказки навыков ---------- */
+// категория варианта по пулу: какой дисциплиной его можно заменить
+function specCat(spec){if(spec==="HUNT")return "feed";const p=spec.split("+");const sk=p.slice(1).map(x=>x.startsWith("D:")?(x.split("/")[1]||""):x);
+  if(sk.some(x=>["pers","subt","etiq","intim","insight"].includes(x)))return "social";if(sk.some(x=>["stealth","larc"].includes(x)))return "stealth";
+  if(sk.includes("occ"))return "occ";if(sk.includes("anim"))return "anim";if(p[0]==="com"||p[0]==="sta")return "endure";
+  if(sk.some(x=>["ath","brawl"].includes(x)))return "phys";return "mind"}
+const DISC_USE={
+  "Доминирование":{cats:["social","feed"],t:"приказать взглядом",x:"Вы ловите его взгляд и говорите одно слово. Воля смертного гнётся, как мокрая бумага."},
+  "Присутствие":{cats:["social","feed"],t:"заставить захотеть помочь",x:"Вы позволяете ему почувствовать, кто перед ним. Он уже хочет вам угодить — и сам не знает почему."},
+  "Затемнение":{cats:["stealth","feed"],t:"стать незаметным",x:"Взгляды соскальзывают с вас. Для них здесь никого нет."},
+  "Прорицание":{cats:["mind","occ","stealth"],t:"увидеть то, что скрыто",x:"Чувства обостряются до боли: запахи, следы, дрожь в чужом голосе — всё складывается само."},
+  "Стремительность":{cats:["phys","stealth"],t:"быстрее, чем видит глаз",x:"Мир замедляется. Вы успеваете раньше, чем кто-то моргнёт."},
+  "Мощь":{cats:["phys","endure"],t:"просто взять силой",x:"Замок, дверь, чужая хватка — ничто не держит против крови."},
+  "Стойкость":{cats:["endure","phys"],t:"вытерпеть",x:"Боль приходит и уходит. Тело Сородича выдерживает то, что убило бы человека."},
+  "Анимализм":{cats:["anim","mind","feed"],t:"спросить у зверей",x:"Крысы, кошки, бродячие псы слушают вас. Они видели то, чего не видели люди."},
+  "Магия крови":{cats:["occ","mind"],t:"прочитать по крови",x:"Капля на пальцах — и вкус расскажет, кто здесь был и чего боялся."},
+  "Превращение":{cats:["mind","phys","feed"],t:"глаза и когти Зверя",x:"Зрачки разливаются на всю радужку, ногти твердеют. Темнота больше ничего не прячет."}};
+// проверка крови V5: каждая дисциплина будит Голод (1–5 на d10 — Голод +1)
+function rouse(a){const v=1+Math.floor(Math.random()*10);if(v<=5){a.hunger=clamp(a.hunger+1,0,CONFIG.hungerMax);return {v,fx:"Проверка крови: Голод +1"}}return {v,fx:"Проверка крови: Голод не растёт"}}
+// «взять половину»: если половины пула хватает, бросать не нужно
+function sureOf(a,spec,mod=0,need=2){if(!isV5())return null;const P=poolOf(a,spec,mod);return Math.floor(P.n/2)>=Math.max(need,3)?P:null} // только когда пул большой (6+): мастерство
+// дополнить событие: вариант дисциплины, подсказка навыка
+function enrichEvent(a,ev){if(!isV5()||!a.sheet)return ev;const c=ev.c.slice();
+  const rolls=c.filter(x=>x.ok);const ds=Object.entries(a.sheet.d).sort((x,y)=>y[1]-x[1]).map(x=>x[0]);
+  outer:for(const dn of ds){const U=DISC_USE[dn];if(!U)continue;for(const ch of rolls){const sp=poolSpec(ch.t);if(sp.includes("D:"+dn))continue;
+      if(U.cats.includes(specCat(sp))){const i=c.indexOf(ch);c.splice(i+1,0,{t:`${dn}: ${U.t}`,disc:dn,base:ch.t,o:ch.ok,dx:U.x});break outer}}}
+  return {...ev,c,hint:insightHint(a,ev)}}
+function insightHint(a,ev){const rolls=ev.c.filter(x=>x.ok);if(!rolls.length)return null;const social=rolls.some(x=>specCat(poolSpec(x.t))==="social");
+  const k=social?"insight":"aware";const v=a.sheet.s[k]||0;if(v<2)return null;
+  const risky=rolls.find(x=>x.fail&&(x.fail.a>0||x.fail.h>0));const prize=rolls.find(x=>x.ok&&x.ok.c);const safe=ev.c.find(x=>x.o&&x.o.c);
+  const bits=[];if(prize)bits.push(`«${prize.t}» может дать находку`);if(risky)bits.push(`${risky===prize?"но ":""}при неудаче «${risky.t}» вас заметят`);
+  if(safe)bits.push(`«${safe.t}» — без риска`);if(!bits.length)return null;
+  return {k,v,text:(social?"Чутьё подсказывает: ":"Вы замечаете: ")+bits.join(", ")+"."}}
+// Зверь: при Голоде 5 — Самообладание + Решимость, чтобы удержаться
+function holdBeast(a){if(!isV5())return false;const X=check(a,"com+res",0,2);return X.ok}
