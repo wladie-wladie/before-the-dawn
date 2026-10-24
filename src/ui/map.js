@@ -9,7 +9,7 @@ function targetCam(){
   return {x:x-W/2,y:y-H/2,w:W,h:H};
 }
 let camAnim=null;
-function focusCam(instant){
+function focusCam(instant){MAP3D.focus(instant);
   const t=targetCam();
   if(!UI.cam||instant||reduceMotion()){UI.cam=t;applyCam();return}
   const from={...UI.cam};const t0=performance.now();const dur=520;
@@ -70,6 +70,7 @@ function buildBoard(){
   let hits="";for(const h of Object.values(c.map)){const [x,y]=px(h.q,h.r);hits+=`<polygon data-k="${h.k}" points="${ptsStr(hexPts(x,y,.98))}" fill="transparent"/>`}
   $("#hits").innerHTML=hits;initPanZoom();
   $("#hits").querySelectorAll("polygon").forEach(p=>{p.onclick=()=>{if(UI.dragged)return;clickHex(p.dataset.k)};p.onmouseenter=()=>{UI.hover=p.dataset.k;drawMarks()};p.onmouseleave=()=>{UI.hover=null;drawMarks()}});
+  MAP3D.rebuild();
 }
 function drawFog(){
   if(G.phase==="gen"||G.phase==="built"||G.phase==="setup"||!me()){$("#fog").innerHTML="";return}
