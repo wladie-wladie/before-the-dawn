@@ -9,14 +9,13 @@ function sceneHtml(){if(!G||G.phase!=="walk"||!M||!M.enc)return "";const E=M.enc
   const kind={ev:"осмотр",meet:"встреча",infl:"влияние",note:"находка"}[E.kind]||"";
   const art=`art/ev_${SCENE_ART[h.t]||"res"}.webp`;
   let body;
-  if(E.res)body=`<p class="sc-choice">${esc(E.res.choice||"")}</p>${E.res.dice?`<div class="dice sc-dice">${diceHtml(E.res.dice)} <span class="hint">${E.res.ok?"удача":"неудача"}</span></div>`:""}
+  if(E.res)body=`<p class="sc-choice">${esc(E.res.choice||"")}</p>${E.res.dice?`<div class="dice sc-dice">${diceHtml(E.res.dice,E.res.roll)}${E.res.roll?"":` <span class="hint">${E.res.ok?"удача":"неудача"}</span>`}</div>${rollHtml(E.res.roll,E.res.ok)}`:""}
     <p class="sc-text">${E.res.text}</p>${E.res.fx?`<p class="fx">${E.res.fx}</p>`:""}<button class="go sc-go" onclick="act('close')"><span>Дальше</span>${ico("arrow")}</button>`;
   else body=`<p class="sc-text">${E.e.x||""}</p><div class="sc-opts">${E.e.c.map((c,i)=>{const roll=c.ok||c.roll||c.inf;
-      return `<button class="sc-opt${roll?" roll":""}" ${c.dis?"disabled":""} onclick="act('choose',{i:${i}})"><span>${c.t}</span>${roll?'<em><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="5.5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.5" cy="10.5" r="1.2" fill="currentColor"/></svg>бросок</em>':"<i>›</i>"}</button>`}).join("")}</div>`;
+      return `<button class="sc-opt${roll?" roll":""}" ${c.dis?"disabled":""} onclick="act('choose',{i:${i}})"><span>${c.t}${roll?poolTag(E,c):""}</span>${roll?'<em><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="5.5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.5" cy="10.5" r="1.2" fill="currentColor"/></svg>бросок</em>':"<i>›</i>"}</button>`}).join("")}</div>`;
   const finds=M.hand.slice(-6).reverse();
   sceneHtml.key=E.h+"|"+E.e.t;sceneHtml.art=art;
-  return `<div class="sc-top">${hud()}</div>
-   <div class="sc-wrap">
+  return `<div class="sc-wrap">
     <div class="sc-card"><div class="sc-eye">${TYPES[h.t].n}${M.visited.has(h.k)&&h.name!==TYPES[h.t].n?" · "+h.name:""}${kind?" · "+kind:""}</div><h2>${E.e.t}</h2>${body}</div>
     <div class="sc-foot"><div class="sc-k">Находки <span class="tag">${M.hand.length}</span></div><div class="sc-finds">${finds.length?finds.map(c=>cardHtml(c)).join(""):'<p class="hint">Пока ничего. Находки появятся здесь.</p>'}</div></div>
     <div class="sc-side"><canvas class="sc-mini" width="150" height="120" aria-hidden="true"></canvas></div>

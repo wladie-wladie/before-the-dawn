@@ -29,3 +29,14 @@ body.v3d #map3d{display:block}body.v3d #mapwrap svg{display:none}
 body.sc-open{overflow:hidden}
 @media (max-width:760px){#scene .sc-wrap{top:calc(96px + env(safe-area-inset-top,0px));grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}#scene .sc-foot{grid-column:1}#scene .sc-side{display:none}
   #scene .sc-top .meters{display:none}#scene .sc-top .clock{border-right:0}}
+
+/* метки «Вы» и «Убежище» на 3D-карте */
+.pin3d{position:absolute;left:0;top:0;display:none;pointer-events:none;z-index:2}
+.pin3d>span{position:absolute;left:0;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:5px;white-space:nowrap;padding:4px 10px 4px 8px;border-radius:999px;font:700 .78rem/1 var(--f-body);letter-spacing:.04em;background:rgba(8,9,13,.88);border:1px solid var(--pc,#e8a0b8);color:var(--ink);box-shadow:0 0 14px -2px var(--pc,#e8a0b8)}
+.pin3d.me>span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--pc,#e8a0b8);box-shadow:0 0 8px var(--pc,#e8a0b8)}
+.pin3d.home{--pc:#f1c57c}.pin3d.home b{color:var(--gold2)}
+.pin3d svg{width:14px;height:14px;fill:none;stroke:var(--gold2);stroke-width:2;stroke-linejoin:round}
+.pin3d>span::after{content:"";position:absolute;left:50%;bottom:-6px;width:9px;height:9px;margin-left:-4.5px;transform:rotate(45deg);background:rgba(8,9,13,.88);border-right:1px solid var(--pc,#e8a0b8);border-bottom:1px solid var(--pc,#e8a0b8)}
+.pin3d .pa{display:none}
+.pin3d.off>span{bottom:auto;top:0;transform:translate(-50%,-50%)}.pin3d.off>span::after{display:none}
+.pin3d.off .pa{display:block;position:absolute;left:0;top:0;width:0;height:0;transform:rotate(var(--pr,0deg)) translateY(-26px);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid var(--pc,#e8a0b8);margin-left:-7px}

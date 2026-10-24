@@ -21,17 +21,17 @@ const here=p=>G.city.map[p.pos];
 /* ---------- начало партии ---------- */
 CMD.toSetup={sys:true,can:()=>G.phase==="built"?null:"город ещё строится",run:()=>{G.phase="setup"}};
 CMD.start={sys:true,can:(p,a)=>G.phase!=="setup"?"не время":!a.clan||!a.fac?"выберите клан и сторону":null,
-  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final")};
-function startGame(clan,fac,death){
+  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final",a.dice,a.pred)};
+function startGame(clan,fac,death,diceMode,pred){
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
-  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;
+  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;G.dice=diceMode==="v5"?"v5":"simple";M.sheet=mkSheet(clan,pred);
   reveal(M,h.k);M.visited.add(h.k);M.visitedTonight.add(h.k);M.seen.add("0,0");reveal(M,"0,0");
   G.prince=pick(PRINCES);G.persona=pick(Object.keys(PERSONAS));
   initDistricts();
   const others=shuffle(Object.keys(CLANS).filter(c=>c!==clan)).slice(0,CONFIG.bots);
   const used=new Set([M.haven,"0,0"]);
-  for(const [i,c] of others.entries()){const hs=Object.values(G.city.map).filter(x=>!["river","ely"].includes(x.t)&&!used.has(x.k)&&hexDist(x.k,M.haven)>=3&&x.ring>=2);const hh=pick(hs.length?hs:Object.values(G.city.map).filter(x=>x.t!=="ely"));used.add(hh.k);G.P.push(mkBot(i,c,hh.k))}
+  for(const [i,c] of others.entries()){const hs=Object.values(G.city.map).filter(x=>!["river","ely"].includes(x.t)&&!used.has(x.k)&&hexDist(x.k,M.haven)>=3&&x.ring>=2);const hh=pick(hs.length?hs:Object.values(G.city.map).filter(x=>x.t!=="ely"));used.add(hh.k);const B=mkBot(i,c,hh.k);B.sheet=mkSheet(c,pick(Object.keys(PREDATORS)));G.P.push(B)}
   M.hand=[dirtyCard(M)];const g=pick(GOALS);M.goal=g.id;if(g.id==="punish")M.goalX=pick(Object.keys(CLANS).filter(c=>c!==clan));
   G.phase="walk";
   addLog(`<b>Ночь 1.</b> Вы просыпаетесь в убежище «${h.name}». Город поделён: Камарилья держит ${G.start.cam} районов, анархи — ${G.start.ana}, остальные ничьи.`);
@@ -62,8 +62,8 @@ CMD.search={can:p=>free(p)||(here(p).t==="ely"?"в Элизиуме не осм�
     const ev=eventFor(p,k);p.enc={kind:"ev",h:k,e:ev,res:null};emit("enc",{pid:p.id,kind:"search"});humanSpend(p,1)}};
 CMD.choose={can:(p,a)=>!p.enc?"выбирать не из чего":p.enc.res?"выбор уже сделан":!p.enc.e.c[a.i]?"нет такого варианта":p.enc.e.c[a.i].dis?"сейчас недоступно":null,
   run:(p,a)=>{const E=p.enc;if(E.kind==="infl")return chooseInfluence(p,a.i);if(E.kind==="meet")return chooseMeet(p,a.i);
-    const ch=E.e.c[a.i];let o=ch.o,d=null,ok=null;if(ch.ok){d=rollDice(p);ok=hit(d);o=ok?ch.ok:ch.fail}
-    const r=outcome(p,o,E.h);E.res={text:r.text,dice:d,ok,fx:r.fx,choice:ch.t};
+    const ch=E.e.c[a.i];let o=ch.o,d=null,ok=null,X=null;if(ch.ok){X=check(p,poolSpec(ch.t));d=X.d;ok=X.ok;o=ok?ch.ok:ch.fail}
+    const r=outcome(p,o,E.h);const bf=X?beastFx(p,X):"";E.res={text:r.text,dice:d,roll:X&&X.R,ok,fx:[r.fx,bf].filter(Boolean).join(" · "),choice:ch.t};
     if(r.tm){if(p.control==="human")advance(r.tm);else p.busy=(p.busy||0)+r.tm}
     emit("result",{pid:p.id,ok,dice:d})}};
 CMD.close={can:p=>!p.enc?"нечего закрывать":p.enc.res?null:"сначала сделайте выбор",
@@ -72,9 +72,9 @@ CMD.close={can:p=>!p.enc?"нечего закрывать":p.enc.res?null:"сн�
     if(p.hunger>=CONFIG.hungerMax){p.hunger=2;p.alarm=clamp(p.alarm+2,0,CONFIG.alarmMax);loudAt(p.pos,p);if(isMe(p))addLog("<b>Зверь вырывается наружу.</b> Вы приходите в себя в чужом подъезде. Тревога +2.");emit("beast",{pid:p.id})}
     if(p.control==="human"&&G.time>=CONFIG.nightEnd)dawn()}};
 CMD.hunt={can:p=>free(p)||(p.pos==="0,0"?"в Элизиуме не охотятся":null),
-  run:p=>{const h=here(p);const busy=["club","res","market","theatre","rail"].includes(h.t);const d=rollDice(p,1-(threatLvl()>=6?1:0));const ok=hit(d);
+  run:p=>{const h=here(p);const busy=["club","res","market","theatre","rail"].includes(h.t);const X=check(p,"HUNT",(isV5()?0:1)-(threatLvl()>=6?1:0));const d=X.d,ok=X.ok;
     if(ok)p.hunger=clamp(p.hunger-(busy?2:1),0,CONFIG.hungerMax);else{p.alarm++;loudAt(p.pos,p)}
-    if(isMe(p))addLog(`Охота в «${h.name}» [${d.join(" ")}]: ${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1."):"вас заметили. Тревога +1."}`);
+    const bf=beastFx(p,X);if(isMe(p))addLog(`Охота в «${h.name}»${X.R?` (${X.R.label}, успехов ${X.R.succ})`:` [${d.join(" ")}]`}: ${bf?bf+". ":""}${ok?(busy?"в толпе легко найти добычу. Голод −2.":"добычи мало, но хватило. Голод −1."):"вас заметили. Тревога +1."}`);
     emit("hunt",{pid:p.id,ok,dice:d});
     if(humanSpend(p,2))return;if(p.control==="human"&&p.alarm>=CONFIG.alarmMax){endGame("lost");return}
     if(p.hunger>=CONFIG.hungerMax){p.hunger=2;p.alarm=clamp(p.alarm+2,0,CONFIG.alarmMax);loudAt(p.pos,p)}}};
@@ -94,18 +94,19 @@ CMD.switchSide={can:(p,a)=>free(p)||(p.pos!==p.haven?"только в убежи
 /* влияние: единый способ для всех, кубики и ключ района */
 CMD.influence={can:p=>free(p)||(!G.dist[p.pos]?"Элизиум ничей и не меняет хозяина":null),
   run:p=>{const h=here(p),R=DIST[h.t],key=R.key;const D=G.dist[p.pos];const c=[];const base=2+(p.status>=6?1:0)-(p.hunger>=4?1:0);
-    c.push({t:`Работать без вложений · ${Math.max(1,base)} куб.`,inf:{}});
-    if(key.card){const cs=p.hand.filter(x=>x.k===key.card&&!x.dirty&&!x.trace);if(cs.length)c.push({t:`Отдать ${KIND[key.card]} «${cs[0].name}» · ${base+2} куб.`,inf:{card:cs[0].id}})}
-    if(key.money)c.push({t:`Заплатить ${key.money} денег · ${base+2} куб.`,inf:{money:key.money},dis:p.money<key.money});
-    if(p.clan==="gan"&&["park","edge"].includes(h.t))c.push({t:`Пометить угодья по-звериному · ${base+2} куб.`,inf:{beast:1}});
-    if(p.clan==="tre"&&h.t==="cem")c.push({t:`Провести ритуал над могилами · ${base+2} куб.`,inf:{beast:1}});
-    p.enc={kind:"infl",h:p.pos,e:{t:`Влияние: «${h.name}»`,x:`Способ — ${R.how}. Сейчас район ${D.own?"за "+FAC[D.own].name:"ничей"}${D.own?(Math.abs(D.c)>=4?", держится прочно":", держится шатко"):""}. Каждая 5–6 сдвигает район к вашей тайной стороне — ${p.fac==="cam"?"Камарилье":"анархам"}. Итог станет виден на рассвете, а кто вложился — нет.`,c},res:null};
+    const nd=(inf,m)=>isV5()?poolOf(p,inflSpec(p,inf),m).n:Math.max(1,base+m);
+    c.push({t:`Работать без вложений · ${nd({},0)} куб.`,inf:{}});
+    if(key.card){const cs=p.hand.filter(x=>x.k===key.card&&!x.dirty&&!x.trace);if(cs.length)c.push({t:`Отдать ${KIND[key.card]} «${cs[0].name}» · ${nd({card:1},2)} куб.`,inf:{card:cs[0].id}})}
+    if(key.money)c.push({t:`Заплатить ${key.money} денег · ${nd({money:1},2)} куб.`,inf:{money:key.money},dis:p.money<key.money});
+    if(p.clan==="gan"&&["park","edge"].includes(h.t))c.push({t:`Пометить угодья по-звериному · ${nd({beast:1},2)} куб.`,inf:{beast:1}});
+    if(p.clan==="tre"&&h.t==="cem")c.push({t:`Провести ритуал над могилами · ${nd({beast:1},2)} куб.`,inf:{beast:1}});
+    p.enc={kind:"infl",h:p.pos,e:{t:`Влияние: «${h.name}»`,x:`Способ — ${R.how}. Сейчас район ${D.own?"за "+FAC[D.own].name:"ничей"}${D.own?(Math.abs(D.c)>=4?", держится прочно":", держится шатко"):""}. ${isV5()?"Успехи (6+ на d10) сдвигают район: 1–2 успеха — шаг, 3–4 — два шага":"Каждая 5–6 сдвигает район"} к вашей тайной стороне — ${p.fac==="cam"?"Камарилье":"анархам"}. Итог станет виден на рассвете, а кто вложился — нет.`,c},res:null};
     emit("enc",{pid:p.id,kind:"influence"})}};
 function chooseInfluence(p,i){const E=p.enc,ch=E.e.c[i];const inf=ch.inf;let mod=0;
   if(inf.card){p.hand=p.hand.filter(x=>x.id!==inf.card);mod+=2}if(inf.money){p.money-=inf.money;mod+=2}if(inf.beast)mod+=2;
-  const d=rollDice(p,mod);const n=hits(d);if(n)addInfluence(p,p.pos,n,p.fac);leaveTrace(p,p.pos,p.fac);
-  let fx="";if(!n&&d.includes(1)){p.alarm++;loudAt(p.pos,p);fx="Тревога +1"}
-  E.res={dice:d,ok:n>0,choice:ch.t,text:n?`Район поддаётся: ${n} ${n===1?"шаг":"шага"} к вашей стороне. Утром город увидит, к кому он склонился.`:"Ничего не вышло. Люди здесь не готовы слушать.",fx};
+  const X=check(p,inflSpec(p,inf),mod,1);const d=X.d;const n=X.R?Math.floor((X.n+1)/2):X.n;if(n)addInfluence(p,p.pos,n,p.fac);leaveTrace(p,p.pos,p.fac);
+  let fx="";if(!n&&(X.R?X.R.bestial:d.includes(1))){p.alarm++;loudAt(p.pos,p);fx="Тревога +1"}else{const bf=beastFx(p,X);if(bf)fx=bf}
+  E.res={dice:d,roll:X.R,ok:n>0,choice:ch.t,text:n?`Район поддаётся: ${n} ${n===1?"шаг":"шага"} к вашей стороне. Утром город увидит, к кому он склонился.`:"Ничего не вышло. Люди здесь не готовы слушать.",fx};
   emit("result",{pid:p.id,ok:n>0,dice:d});humanSpend(p,2)}
 CMD.rumor={can:(p,a)=>free(p)||(!TALK.includes(here(p).t)?"слухи пускают в людных местах: бар, клуб, рынок, вокзал":!p.hand.length?"нечего рассказать":a.card&&!p.hand.some(c=>c.id===a.card)?"такой карты нет":null),
   run:(p,a)=>{const c=p.hand.find(x=>x.id===a.card);p.hand=p.hand.filter(x=>x!==c);playerRumor(p,c);
@@ -134,9 +135,9 @@ function chooseMeet(p,i){const E=p.enc,ch=E.e.c[i];const b=actorById(E.b);let te
   else if(ch.m==="trade"){p.enc=null;p.tradeWith=b.id;emit("tradeAsk",{pid:p.id,bot:b.id});return}
   else if(ch.m==="buy"){const s=b.hand.filter(c=>!c.dirty&&botValue(b,c)<=2);if(s.length){const c=pick(s);b.hand=b.hand.filter(x=>x!==c);p.hand.push(c);p.money-=3;b.money+=3;text=`Он продаёт вам «${c.name}».`;fx=`в руку: ${c.name} · Деньги −3`}else text="«Мне нечего продать. Всё, что у меня есть, пригодится самому»."}
   else if(ch.m==="threat"){const c=p.hand.find(x=>x.clan===b.clan);if(b.money>=3){b.money-=3;p.money+=3;text=`Он смотрит на «${c.name}» и молча отсчитывает три монеты.`;fx="Деньги +3"}else if(b.hand.length){const g=b.hand.filter(x=>!(x.dirty&&x.clan===b.clan));const gv=g.length?pick(g):null;if(gv){b.hand=b.hand.filter(x=>x!==gv);p.hand.push(gv);text=`Денег у него нет. Он отдаёт вам «${gv.name}».`;fx=`в руку: ${gv.name}`}else text="Ему нечем откупиться. Он запоминает ваше лицо."}b.grudge+=1}
-  else if(ch.m==="steal"){d=rollDice(p,1);ok=hit(d);if(ok&&b.hand.length){const c=b.hand.splice(Math.floor(Math.random()*b.hand.length),1)[0];p.hand.push(c);text=`Короткая стычка в тени. «${c.name}» теперь у вас.`;fx=`в руку: ${c.name} · Тревога +1`}else{text="Он вырывается и уходит, зажимая рану.";fx="Тревога +1"}p.alarm++;loudAt(p.pos,p);b.grudge+=2}
+  else if(ch.m==="steal"){const X=check(p,"str+brawl+D:Мощь",isV5()?0:1);d=X.d;ok=X.ok;E.roll=X.R;if(ok&&b.hand.length){const c=b.hand.splice(Math.floor(Math.random()*b.hand.length),1)[0];p.hand.push(c);text=`Короткая стычка в тени. «${c.name}» теперь у вас.`;fx=`в руку: ${c.name} · Тревога +1`}else{text="Он вырывается и уходит, зажимая рану.";fx="Тревога +1"}p.alarm++;loudAt(p.pos,p);b.grudge+=2}
   else text="Вы киваете друг другу и расходитесь.";
-  E.res={text,fx,dice:d,ok,choice:ch.t};emit("result",{pid:p.id,ok,dice:d})}
+  E.res={text,fx,dice:d,roll:E.roll||null,ok,choice:ch.t};E.roll=null;emit("result",{pid:p.id,ok,dice:d})}
 CMD.trade={can:(p,a)=>!p.tradeWith?"обмен не предлагали":a.cancel?null:!p.hand.some(c=>c.id===a.card)?"такой карты нет":null,
   run:(p,a)=>{const b=actorById(p.tradeWith);p.tradeWith=null;if(a.cancel||!b)return;const c=p.hand.find(x=>x.id===a.card);
     const give=b.hand.filter(x=>!(x.dirty&&x.clan===b.clan)).sort((x,y)=>botValue(b,x)-botValue(b,y))[0];

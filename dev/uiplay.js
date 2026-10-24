@@ -1,14 +1,14 @@
 // Проверка через интерфейс: игра нажимает кнопки, как человек. node uiplay.js <page> <clan> <steps>
 const {chromium}=require('playwright');
-const [,,page,clan='tor',N='300']=process.argv;
+const [,,page,clan='tor',N='300',MODE='simple']=process.argv;
 (async()=>{const b=await chromium.launch({args:['--no-sandbox','--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});const p=await b.newPage({viewport:{width:1400,height:950}});
  const errs=[],warns=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='warning')warns.push(m.text())});
  await p.addInitScript(()=>{try{localStorage.clear()}catch(e){};window.BTD_TEST=1;try{localStorage.setItem('btd-view','2d')}catch(e){}});await p.goto(page.startsWith('http')?page:'file://'+page);await p.waitForTimeout(5200);
  const btn=t=>p.getByRole('button',{name:t}).first();
  
  const names={tor:'Тореадор',ven:'Вентру',nos:'Носферату',bru:'Бруха',tre:'Тремер',gan:'Гангрел',tzi:'Цимисх'};
- await p.locator('.su-card').filter({hasText:names[clan]}).first().click();await btn('Дальше').click();
- await p.locator('.su-big').first().click();await btn('Дальше').click();await p.locator('.su-big').nth(1).click();await btn('Выйти в ночь').click();await p.waitForTimeout(500);await p.evaluate(()=>endReveal());
+ await btn(/Новая игра/).click();await p.locator('.su-card').filter({hasText:names[clan]}).first().click();await btn('Дальше').click();
+ await p.locator('.su-big').first().click();await btn('Дальше').click();await p.locator('.su-rule').nth(1).click();await p.locator('.su-rule').nth(MODE==='v5'?3:2).click();if(MODE==='v5'){await btn('Дальше').click();await p.locator('.su-preds .su-card').nth(Math.floor(Math.random()*4)).click()}await btn('Выйти в ночь').click();await p.waitForTimeout(500);await p.evaluate(()=>endReveal());
  await btn('Понятно').click();
  const seen={};let walked=0;
  for(let i=0;i<Number(N);i++){

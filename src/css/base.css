@@ -50,7 +50,7 @@ button.mini{padding:2px 8px;font-size:.78rem;margin-left:6px}
 .tag.bad{color:#e0606b;border-color:#7d2a33}
 
 /* ---------- верхняя строка ---------- */
-.top{position:relative;z-index:30;display:flex;align-items:center;gap:14px;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
   background:linear-gradient(180deg,#0d0e14,#0a0b10);border-bottom:1px solid var(--line)}
 .brand{display:grid;place-items:center;width:40px;height:40px;flex:none;color:var(--gold2)}
 .brand svg{width:30px;height:30px;fill:currentColor;filter:drop-shadow(0 0 8px rgba(241,197,124,.35))}
@@ -236,11 +236,15 @@ footer span{max-width:110ch}
   .more-m{right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .top{flex-wrap:wrap;padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;gap:8px 12px}
   .brand{width:30px;height:30px}.brand svg{width:24px;height:24px}
-  #hud{order:3;flex-basis:100%}
-  .hud{flex-direction:column;align-items:stretch;gap:8px}
+  #hud,.hud{display:contents}
+  .clock{order:2}.top-r{order:3}.meters{order:4}
+  .m{font-size:.8rem}
+  .clock{column-gap:8px;min-width:0;flex:1 1 0;grid-template-columns:auto minmax(0,1fr)}.sky{min-width:0}
+  .nt{min-width:0}.nt>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meters{flex-basis:100%;margin-top:-2px;flex-wrap:wrap;row-gap:3px;overflow:visible}
+  .m{padding:0 8px 0 0;margin-right:8px}
   .clock{border-right:0;padding-right:0}
   .clock .big{font-size:1.7rem}
-  .meters{flex-wrap:wrap;row-gap:4px;overflow:visible}
   .m{padding:0 10px 0 0;margin-right:10px}
   .menu{top:56px}
   .grid{grid-template-columns:minmax(0,1fr);padding-top:8px}
@@ -253,3 +257,54 @@ footer span{max-width:110ch}
   .act{min-width:0;padding:8px 11px}
 }
 @media (max-width:560px){.tabs button .ico{display:none}.tabs button{padding:9px 2px;font-size:.82rem;gap:4px}.a-t span{display:none}.act>.ico{width:20px;height:20px}}
+
+/* ---------- экраны под верхней строкой: строка и меню видны всегда ---------- */
+#setup,#court,#scene{top:var(--topH,64px)!important}
+#scene .sc-wrap{top:14px!important}
+@media (max-width:760px){#scene .sc-wrap{top:10px!important}}
+
+/* ---------- главное меню ---------- */
+#home{position:fixed;inset:0;z-index:70;overflow:auto;background:#05060a}
+#home[hidden]{display:none}
+body.hm-open{overflow:hidden}
+.hm-bg{position:fixed;inset:0;background:linear-gradient(90deg,rgba(5,6,10,.97) 0%,rgba(5,6,10,.78) 42%,rgba(5,6,10,.25) 100%),url(art/ev_ely.webp) center/cover;animation:scIn 1.2s ease both}
+.hm-in{position:relative;min-height:100%;display:grid;grid-template-columns:minmax(0,420px) minmax(0,520px);align-content:center;gap:28px 48px;
+  padding:calc(40px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) max(24px,6vw)}
+.hm-brand{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.hm-brand svg{width:46px;height:46px;fill:var(--gold2);filter:drop-shadow(0 0 14px rgba(241,197,124,.45))}
+.hm-brand h1{font-size:clamp(2.8rem,7vw,5.2rem);line-height:.95;font-weight:600;letter-spacing:.01em;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.hm-brand p{font-size:1.1rem;color:var(--text)}
+.hm-nav{display:flex;flex-direction:column;gap:8px;align-self:start}
+.hm-b{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:10px;background:var(--glass);backdrop-filter:blur(8px);border-color:var(--line2)}
+.hm-b>span{display:flex;flex-direction:column}
+.hm-b b{font-family:var(--f-display);font-size:1.45rem;font-weight:600;line-height:1.1}
+.hm-b i{font-style:normal;font-size:.82rem;color:var(--dim)}
+.hm-b .ico{color:var(--dim)}
+.hm-b.pri{border-color:var(--gold);background:linear-gradient(90deg,rgba(217,168,90,.2),rgba(13,14,20,.85))}
+.hm-b.pri b,.hm-b.pri .ico{color:var(--gold2)}
+.hm-b:hover:not(:disabled){border-color:var(--gold)}
+.hm-panel{align-self:start;background:var(--glass)!important;backdrop-filter:blur(12px)}
+.hm-ph{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hm-ph .ib{height:34px;min-width:34px}
+.hm-set{display:flex;flex-direction:column;gap:10px}
+@media (max-width:860px){.hm-in{grid-template-columns:1fr;align-content:start;padding-top:calc(28px + env(safe-area-inset-top,0px))}.hm-bg{background:linear-gradient(180deg,rgba(5,6,10,.5),rgba(5,6,10,.96) 55%),url(art/ev_ely.webp) center top/cover}}
+
+/* ---------- броски V5 ---------- */
+.roll5{display:flex;flex-direction:column;gap:3px;margin:-4px 0 12px;font-size:.84rem}
+.r5-pool{color:var(--dim)}.r5-pool b{color:var(--ink)}
+.r5-res{font-weight:700;letter-spacing:.02em}.r5-res.ok{color:var(--gold2)}.r5-res.bad{color:var(--dim)}.r5-res.beast{color:#e0606b}
+.r5-tag{display:block;margin-top:3px;font-size:.74rem;color:var(--dim);font-weight:400}
+.sc-opt.roll .r5-tag{color:#d9a0a6}
+/* лист персонажа */
+.sheet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:18px 20px;border:1px solid var(--line2);border-radius:12px;background:linear-gradient(180deg,#121319,#0d0e13)}
+.sh-col{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sh-g{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.sh-gn{font-size:.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.sh-r{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.9rem;color:var(--text)}
+.sh-r i{font-style:normal}
+.dots{display:inline-flex;gap:3px;flex:none}.dots i{width:9px;height:9px;border-radius:50%;border:1px solid #4a4752}.dots i.on{background:var(--blood);border-color:var(--blood)}
+.side-in .sheet{grid-template-columns:1fr;padding:0;border:0;background:none;gap:14px}
+.su-dice{display:flex;gap:6px}.su-die{width:40px;height:40px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.su-preds{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.tabs.t5{grid-template-columns:repeat(5,1fr)}.tabs.t5 button .ico{display:none}.tabs.t5 button{font-size:.84rem;padding:8px 2px}
+@media (max-width:760px){.sheet{grid-template-columns:1fr 1fr}.sheet .sh-col:last-child{grid-column:1/-1}}

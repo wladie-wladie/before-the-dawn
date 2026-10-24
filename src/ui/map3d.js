@@ -408,6 +408,9 @@ const VIEW_KEY="btd-view";
 const hasGL=(()=>{try{const c=document.createElement("canvas");return !!(c.getContext("webgl")||c.getContext("experimental-webgl"))}catch(e){return false}})();
 function wantOn(){let v=null;try{v=localStorage.getItem(VIEW_KEY)}catch(e){}return hasGL&&v!=="2d"}
 const host=document.createElement("div");host.id="map3d";const lblBox=document.createElement("div");lblBox.className="lbl3d";
+// метки «Вы» и «Убежище»: всегда поверх, у края экрана — стрелка в их сторону
+const mkPin=(cls,html)=>{const el=document.createElement("div");el.className="pin3d "+cls;el.innerHTML=html;el.dataset.on="0";lblBox.appendChild(el);return el};
+const pinMe=mkPin("me",'<i class="pa"></i><span><b>Вы</b></span>'),pinHome=mkPin("home",'<i class="pa"></i><span><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg><b>Убежище</b></span>');
 const renderer=hasGL?new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"}):null;
 if(renderer)renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(42,1,0.5,600);
@@ -453,6 +456,10 @@ function buildCity(){if(!renderer)return;
   {const pin=new THREE.Group();add(pin,new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,2.6,8,1,true),new THREE.MeshBasicMaterial({color:P.me,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthWrite:false})),0,1.3,0);
    add(pin,new THREE.Mesh(new THREE.SphereGeometry(.08,10,8),new THREE.MeshBasicMaterial({color:new THREE.Color(P.me).multiplyScalar(1.8)})),0,2.6,0);pin.visible=false;world.add(pin);world.userData.pin=pin}
   tok=figure(0xe8a0b8,true);world.add(tok);tokAt=null;route=[];botTok=[];
+  // столб света над вами и над убежищем — видно с любого расстояния
+  const beam=(col,h,r)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.6,h,12,1,true),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));m.position.y=h/2;return m};
+  const mb=beam(0xe8a0b8,5,.05);mb.userData.beam=1;tok.add(mb);tok.userData.beam=mb;
+  const hb=new THREE.Group();hb.add(beam(0xf1c57c,7,.09));const hr=new THREE.Mesh(new THREE.RingGeometry(1.1,1.35,40),new THREE.MeshBasicMaterial({color:0xf1c57c,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));hr.rotation.x=-Math.PI/2;hr.position.y=.07;hb.add(hr);hb.visible=false;world.add(hb);world.userData.homeBeam=hb;
   extras();
   Math.random=r0;scene.add(world);need=true;update()}
 function figure(col,mine){const g=new THREE.Group();const coat=new THREE.MeshStandardMaterial({color:0x14131a,roughness:.6,metalness:.2});
@@ -485,13 +492,16 @@ function update(){if(!renderer||!city||!G)return;const m=me();const playing=m&&m
     if(playing&&G.phase==="walk"&&!m.enc&&nbrs(m.pos).includes(k))H.ring.material.opacity=Math.max(H.ring.material.opacity,.45)}
   for(const l of labels){const h=city.map[l.k];const seenK=!playing||m.seen.has(l.k)||h.ring<=rv;const vis=!playing||m.visited.has(l.k);l.el.dataset.on=seenK?"1":"0";l.el.textContent=vis?h.name:TYPES[h.t].n;l.el.classList.toggle("dim",!vis)}
   if(playing){const pin=world.userData.pin;const [hx,hz]=hexCenter(m.haven);pin.position.set(hx,0,hz);pin.visible=true;
-    setFigColor(tok,CLANS[m.disguise||m.clan].color);tok.visible=G.phase==="walk"||G.phase==="court";
+    const hb=world.userData.homeBeam;if(hb){hb.position.set(hx,0,hz);hb.visible=G.phase==="walk"}
+    setFigColor(tok,CLANS[m.disguise||m.clan].color);if(tok.userData.beam)tok.userData.beam.material.color.set(CLANS[m.disguise||m.clan].color);tok.visible=G.phase==="walk"||G.phase==="court";
     if(!tokAt||(tokAt.k!==m.pos&&!route.length)){tokAt=spotOf(m.pos);const [x,z]=posOf(tokAt);tok.position.set(x,0,z);route=[]}
     // замеченные соперники — фигурки цвета клана на краю их района
     const seenB=G.phase==="walk"?visibleTo(m):[];while(botTok.length<seenB.length){const f=figure(0x888888,false);world.add(f);botTok.push(f)}
     botTok.forEach((f,i)=>{const b=seenB[i];f.visible=!!b;if(!b)return;const ritualTrue=m.ritual&&G.time<=m.ritual.until&&hexDist(b.pos,m.ritual.c)<=1;setFigColor(f,CLANS[ritualTrue?b.clan:(b.disguise||b.clan)].color);
       const [x,z]=edgeMid(b.pos,(i*2+1)%6);f.position.set(x*.88+hexCenter(b.pos)[0]*.12,0,z*.88+hexCenter(b.pos)[1]*.12)})}
-  else{tok.visible=false;botTok.forEach(f=>f.visible=false)}
+  else{tok.visible=false;botTok.forEach(f=>f.visible=false);if(world.userData.homeBeam)world.userData.homeBeam.visible=false}
+  pinMe.dataset.on=playing&&tok.visible?"1":"0";pinHome.dataset.on=playing&&G.phase==="walk"?"1":"0";
+  if(playing){pinMe.style.setProperty("--pc",CLANS[m.disguise||m.clan].color);pinMe.querySelector("b").textContent=m.pos===m.haven?"Вы · дома":"Вы";pinHome.hidden=m.pos===m.haven}
   syncExtras(m,playing);
   if(G.night!==lastNight){lastNight=G.night;setWeather(G.night%4===0?"snow":G.night%3===0?"clear":"rain",true)}
   need=true}
@@ -587,7 +597,13 @@ function frame(t){requestAnimationFrame(frame);const dt=Math.min(.1,(t-t0)/1000)
     for(const f of flick){const v=f.fire?f.base*(.75+.25*Math.sin(T*9+f.ph)*Math.sin(T*3.3+f.ph)):(Math.sin(T*.7+f.ph)>.96?f.base*.15:f.base);f.m.material.opacity=v;if(f.c)f.c.material.opacity=v/3.5}}
   if(composer)composer.render();else renderer.render(scene,camera);
   const r=renderer.domElement.getBoundingClientRect();for(const l of labels){if(l.el.dataset.on!=="1"){l.el.style.display="none";continue}const v=l.pos.clone().project(camera);
-    const vis=v.z<1&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05&&cam.dist<40;l.el.style.display=vis?"block":"none";if(vis){l.el.style.transform=`translate(${((v.x+1)/2*r.width).toFixed(0)}px,${((1-v.y)/2*r.height).toFixed(0)}px) translate(-50%,-50%)`;l.el.style.opacity=Math.max(.25,Math.min(1,1.3-(camera.position.distanceTo(l.pos)/30))).toFixed(2)}}}
+    const vis=v.z<1&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05&&cam.dist<40;l.el.style.display=vis?"block":"none";if(vis){l.el.style.transform=`translate(${((v.x+1)/2*r.width).toFixed(0)}px,${((1-v.y)/2*r.height).toFixed(0)}px) translate(-50%,-50%)`;l.el.style.opacity=Math.max(.25,Math.min(1,1.3-(camera.position.distanceTo(l.pos)/30))).toFixed(2)}}
+  if(tok){placePin(pinMe,new THREE.Vector3(tok.position.x,1.1,tok.position.z),r);const hb=world.userData.homeBeam;if(hb)placePin(pinHome,new THREE.Vector3(hb.position.x,1.6,hb.position.z),r)}}
+function placePin(el,p,r){if(el.dataset.on!=="1"||el.hidden){el.style.display="none";return}const v=p.clone().project(camera);let x=(v.x+1)/2*r.width,y=(1-v.y)/2*r.height;
+  const behind=v.z>1;if(behind){x=r.width-x;y=r.height-y}const m=34;const off=behind||x<m||y<m||x>r.width-m||y>r.height-m;
+  if(off){const cx=r.width/2,cy=r.height/2;let dx=x-cx,dy=y-cy;const k=Math.min((cx-m)/Math.abs(dx||1e-6),(cy-m)/Math.abs(dy||1e-6));if(behind||k<1){x=cx+dx*Math.min(1,k);y=cy+dy*Math.min(1,k)}
+    el.style.setProperty("--pr",(Math.atan2(dy,dx)*180/Math.PI+90).toFixed(0)+"deg")}
+  el.classList.toggle("off",off);el.style.display="block";el.style.transform=`translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`}
 const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* --- включение и переключение 2D/3D --- */

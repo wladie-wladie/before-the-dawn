@@ -50,7 +50,7 @@ function newCity(seed){
   buildBoard();G.phase="built";dispatch(ME,"toSetup");render()}
 // показ города: районы загораются кольцами от Элизиума, камера сначала видит весь город
 let revealT=[];
-function revealCity(){revealT.forEach(clearTimeout);revealT=[];UI.reveal="lighting";const total=CONFIG.radius+1;const fast=reduceMotion();
+function revealCity(){try{scrollTo(0,0)}catch(e){}revealT.forEach(clearTimeout);revealT=[];UI.reveal="lighting";const total=CONFIG.radius+1;const fast=reduceMotion();
   setZoom("far");
   UI.revealR=-1;
   for(let r=0;r<=CONFIG.radius;r++)revealT.push(setTimeout(()=>{document.querySelectorAll(`.tile[data-ring="${r}"]`).forEach(el=>el.classList.add("on"));UI.revealR=r;MAP3D.update()},fast?0:400+r*520));
@@ -63,6 +63,7 @@ function render(){if(!G)return;M=me();$("#hud").innerHTML=hud();
   {const su=$("#setup");if(su){const on=G.phase==="setup";su.hidden=!on;if(on){su.innerHTML=setupScreen();document.body.classList.add("su-open")}else{su.innerHTML="";document.body.classList.remove("su-open")}}}
   {const ct=$("#court");if(ct){const on=G.phase==="court"&&!!G.court;ct.hidden=!on;ct.innerHTML=on?courtScreen():"";document.body.classList.toggle("ct-open",on)}}
   renderScene();
+  {const hm=$("#home");if(hm){const h=homeHtml();hm.hidden=!h;hm.innerHTML=h;document.body.classList.toggle("hm-open",!!h)}}
   {const ov=$("#ovl");if(ov){const h=sunHtml()||alertHtml();ov.hidden=!h;ov.innerHTML=h}}
   {const sd=$("#side"),st=sd.querySelector(".side-in")?sd.querySelector(".side-in").scrollTop:0;sd.innerHTML=sideHtml();const si=sd.querySelector(".side-in");if(si&&UI._tab===UI.tab)si.scrollTop=st;UI._tab=UI.tab}
   {const bar=$("#bar"),h=barHtml();bar.hidden=!h;bar.innerHTML=h;document.body.classList.toggle("has-bar",!!h)}
@@ -77,6 +78,7 @@ function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return false;co
 function boot(){initAudioUI();document.querySelectorAll("#zoom [data-z]").forEach(b=>b.onclick=()=>setZoom(b.dataset.z));
   const vb=document.querySelector("[data-view]");if(vb){vb.hidden=!MAP3D.ok;vb.onclick=()=>{MAP3D.setOn(!MAP3D.on);render()}}
   const sb=$("#setBtn"),sm=$("#setMenu");sb.onclick=e=>{e.stopPropagation();sm.hidden=!sm.hidden;sb.setAttribute("aria-expanded",String(!sm.hidden))};
-  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
-  MAP3D.setOn(MAP3D.on);if(!load())newCity()}
+  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!sm.hidden)return closeMenu();if(UI.home&&UI.home!=="main")return homeOpen("main");if(UI.home&&hasGame())return homeClose();if(!UI.home)homeOpen()});
+  const top=document.querySelector(".top");const setTop=()=>document.documentElement.style.setProperty("--topH",top.offsetHeight+"px");setTop();if(window.ResizeObserver)new ResizeObserver(setTop).observe(top);addEventListener("resize",setTop);
+  MAP3D.setOn(MAP3D.on);if(!load())newCity();homeOpen()}
 boot();

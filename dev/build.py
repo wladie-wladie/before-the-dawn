@@ -22,7 +22,8 @@ head='''<!doctype html>
 <meta name="apple-mobile-web-app-title" content="Before the Dawn">
 '''
 css=h[:e]
-body=h[e:].replace('<button onclick="closeMenu();newCity()">Новый город</button>','<button onclick="closeMenu();newCity()">Новый город</button>\n    <button id="installBtn" hidden>Установить приложение</button>').replace('<footer class="hint">','<footer class="hint">')
+body=h[e:].replace('<button onclick="homeOpen(\'how\')">Как играть</button>','<button onclick="homeOpen(\'how\')">Как играть</button>\n    <button id="installBtn" hidden>Установить приложение</button>')
+assert 'installBtn' in body.replace('<footer class="hint">','<footer class="hint">')
 pwa='''
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 let deferredInstall=null;

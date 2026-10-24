@@ -1,5 +1,5 @@
 <header class="top">
-  <div class="brand" title="Before the Dawn · v1.5 «Оперативный центр»"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20.5 4.5a11.5 11.5 0 1 0 7 19.8A10 10 0 0 1 20.5 4.5z"/></svg><span class="sr">Before the Dawn</span></div>
+  <div class="brand" title="Before the Dawn — главное меню" role="button" tabindex="0" onclick="homeOpen()" onkeydown="if(event.key==='Enter')homeOpen()"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20.5 4.5a11.5 11.5 0 1 0 7 19.8A10 10 0 0 1 20.5 4.5z"/></svg><span class="sr">Before the Dawn</span></div>
   <div id="hud"></div>
   <div class="top-r">
     <button class="ib" data-view title="Переключить вид карты: 2D или 3D" aria-label="Вид карты"><svg viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z M9 4v13.5 M15 6.5V20"/></svg><span class="ib-t">3D</span></button>
@@ -11,8 +11,10 @@
     <div class="menu-row"><label for="trackIn" class="btn-s">Свой трек…</label><input type="file" id="trackIn" accept="audio/*" hidden><button id="trackBtn" class="btn-s" hidden>Трек: пауза</button></div>
     <label class="menu-row hint">Громкость <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" aria-label="Громкость"></label>
     <span class="eyebrow">Партия</span>
-    <button onclick="closeMenu();newCity()">Новый город</button>
-    <span class="hint">v1.5 «Оперативный центр»</span>
+    <button onclick="homeOpen()">Главное меню</button>
+    <button onclick="homeOpen('how')">Как играть</button>
+    <button onclick="homeOpen(hasGame()?'confirm':'main');if(!hasGame())homeNew()">Новая игра</button>
+    <span class="hint">v1.6</span>
   </div>
 </header>
 <main class="grid">
@@ -25,4 +27,5 @@
 <div id="court" hidden></div>
 <div id="ovl" hidden></div>
 <div id="scene" hidden aria-label="Происшествие в районе"></div>
+<div id="home" hidden aria-label="Главное меню"></div>
 <footer class="hint"><img class="darkpack" src="icons/legal/darkpack.png" alt="Dark Pack" width="40" height="40"><span>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</span></footer>

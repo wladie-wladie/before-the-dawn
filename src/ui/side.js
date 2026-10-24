@@ -7,8 +7,15 @@
    холодный серо-синий — справка, слоновая кость — заголовки. */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // кубы: последние кубы по числу Голода — красные (кубы Голода), как в V5
-function diceHtml(d){const hn=Math.min(M.hunger||0,d.length);return d.map((v,i)=>{const h=i>=d.length-hn;const f=v===6?"crit":v===5?"success":(h&&v===1?"skull":"blank");
-  return `<img class="die${v>=5?" s":""}" src="icons/dice/${h?"hunger":"normal"}-${f}.png" alt="${v}" title="${v}${h?" · куб Голода":""}" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${v}',className:'${v>=5?"s":""}'}))">`}).join("")}
+function diceHtml(d,R){const hn=R?R.hun:Math.min(M.hunger||0,d.length);const v5=!!R;
+  return d.map((v,i)=>{const h=i>=d.length-hn;const top=v5?10:6,good=v5?6:5;const f=v===top?"crit":v>=good?"success":(h&&v===1?"skull":"blank");
+  return `<img class="die${v>=good?" s":""}" src="icons/dice/${h?"hunger":"normal"}-${f}.png" alt="${v}" title="${v}${h?" · куб Голода":""}" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${v}',className:'${v>=good?"s":""}'}))">`}).join("")}
+// подпись броска V5: из чего собран пул и чем кончилось
+function rollHtml(R,ok){if(!R)return "";const head=R.parts.map(x=>`${x[0]} <b>${x[1]}</b>`).join(" + ")+(R.mod?` ${R.mod>0?"+":"−"} <b>${Math.abs(R.mod)}</b>`:"");
+  const verdict=R.messy?"грязный критический":R.crit&&ok?"критический успех":R.bestial?"звериный провал":ok?"успех":"провал";
+  return `<div class="roll5"><span class="r5-pool">${head} = <b>${R.pool}</b> ${R.pool===1?"куб":R.pool<5?"куба":"кубов"}${R.hun?` · из них Голода ${R.hun}`:""}</span><span class="r5-res${ok?" ok":" bad"}${R.messy||R.bestial?" beast":""}">${R.succ} из ${R.need} · ${verdict}</span></div>`}
+// подпись варианта: сколько кубов и какой пул
+function poolTag(E,ch){if(!isV5())return "";const sp=choiceSpec(M,E,ch);if(!sp)return "";const P=poolOf(M,sp,0);return `<span class="r5-tag">${P.label}${E.kind==="infl"?"":" · "+P.n}</span>`}
 const KICON={c:"☉",i:"◆",p:"⌖"};
 /* ---------- значки (линии, 24×24) ---------- */
 const ICO={
@@ -156,16 +163,17 @@ function endCard(){const F=G.final||facWinner();const rows=G.P.map(a=>({a,s:scor
 // encCard остаётся для совместимости: встречи и осмотры показывает полноэкранная сцена
 function encCard(){return ""}
 function setTab(t){UI.tab=t;render();const s=document.getElementById("side");if(s)s.scrollTop=0}
-const TABS=[["dossier","Досье","doc"],["finds","Находки","cards"],["court","Двор","crown"],["log","Дневник","book"]];
+const TABS=[["dossier","Досье","doc"],["finds","Находки","cards"],["sheet","Лист","people"],["court","Двор","crown"],["log","Дневник","book"]];
 function sideHtml(){if(!G)return "";
   if(G.phase==="gen"||G.phase==="built"||G.phase==="setup"||!M)return "";
   if(UI.reveal&&G.phase==="walk")return genCard();
   const tab=UI.tab||"dossier";
   let body="";
-  if(tab==="finds")body=handCard();else if(tab==="court")body=rivalsCard();else if(tab==="log")body=journalCard();
+  if(tab==="finds")body=handCard();else if(tab==="sheet")body=pn("","Лист персонажа · "+(PREDATORS[(M.sheet||{}).pred]||PREDATORS.sand).n,"people",CLANS[M.clan].name,sheetHtml(M.sheet||mkSheet(M.clan,"sand"),M.clan)+`<p class="hint">Пул броска — атрибут плюс навык или дисциплина. Успех — 6+ на d10, обычно нужно 2 успеха. Кубы Голода (${M.hunger}) могут дать грязный критический или звериный провал.</p>`);else if(tab==="court")body=rivalsCard();else if(tab==="log")body=journalCard();
   else if(G.phase==="walk")body=ritualCard()+pickCard()+dawnCard()+(!M.introDone&&!M.enc?introCard():"")+summonsCard()+caseCard(M.pos==="0,0"&&!M.enc&&!UI.pick)+(M.enc||UI.pick?"":hereCard());
   else if(G.phase==="court")body=caseCard(false);
   else if(G.phase==="day")body=dayCard()+caseCard(false);
   else if(G.phase==="end")body=endCard();
   const n=x=>x==="finds"?`<i>${M.hand.length}</i>`:"";
-  return `<nav class="tabs" role="tablist">${TABS.map(([id,l,ic])=>`<button role="tab" aria-selected="${tab===id}" class="${tab===id?"on":""}" onclick="setTab('${id}')">${ico(ic)}<span>${l}</span>${n(id)}</button>`).join("")}</nav><div class="side-in">${body}</div>`}
+  const tabs=TABS.filter(t=>t[0]!=="sheet"||isV5());
+  return `<nav class="tabs${tabs.length>4?" t5":""}" role="tablist">${tabs.map(([id,l,ic])=>`<button role="tab" aria-selected="${tab===id}" class="${tab===id?"on":""}" onclick="setTab('${id}')">${ico(ic)}<span>${l}</span>${n(id)}</button>`).join("")}</nav><div class="side-in">${body}</div>`}

@@ -3,8 +3,8 @@ import os
 d=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+'/'
 CSS=['base','map','setup','court','overlays','scene']
 JS=['data/data','data/cases','data/events',            # данные
-    'core/cityart','core/city','core/state','core/rules','core/time','core/commands','core/bots',  # движок
-    'ui/map','ui/map3d','ui/audio','ui/side','ui/scene','ui/setup','ui/court','ui/overlays','ui/app']                    # экраны
+    'core/cityart','core/city','core/state','core/rules','core/v5','core/time','core/commands','core/bots',  # движок
+    'ui/map','ui/map3d','ui/audio','ui/side','ui/scene','ui/home','ui/setup','ui/court','ui/overlays','ui/app']                    # экраны
 r=lambda p:open(d+'src/'+p).read()
 css='\n'.join(r(f'css/{c}.css') for c in CSS)
 head=r('shell-head.html')+'<style>\n'+css+'\n</style>\n'+r('shell-body.html')

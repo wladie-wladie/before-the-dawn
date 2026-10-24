@@ -7,14 +7,16 @@ const [,,url,out,W='1600',H='900']=process.argv;
  await p.goto(url);await p.waitForTimeout(5500);
  const shot=async n=>{await p.waitForTimeout(900);await p.screenshot({path:`${out}/${W}_${n}.png`})};
  const btn=t=>p.getByRole('button',{name:t}).first();
- await p.locator('.su-card').first().click();await shot('02_setup');
- await btn('Дальше').click();await p.locator('.su-big').first().click();await btn('Дальше').click();await p.locator('.su-big').nth(1).click();await btn('Выйти в ночь').click();await shot('03a_reveal');await p.waitForTimeout(6000);await shot('03b_reveal');await btn('Начать ночь').click();
+ await shot('00_home');await btn(/Новая игра/).click();await p.locator('.su-card').first().click();await shot('02_setup');
+ await btn('Дальше').click();await p.locator('.su-big').first().click();await btn('Дальше').click();
+ await p.locator('.su-rule').nth(1).click();await p.locator('.su-rule').nth(3).click();await shot('02b_rules');await btn('Дальше').click();
+ await p.locator('.su-preds .su-card').nth(1).click();await shot('02c_pred');await btn('Выйти в ночь').click();await shot('03a_reveal');await p.waitForTimeout(6000);await btn('Начать ночь').click();
  await shot('03_intro');await btn('Понятно').click();await shot('04_walk');
  await p.evaluate(()=>{const m=me();for(let i=0;i<4;i++)m.hand.push({...m.hand[0],id:'x'+i,k:['c','i','p','c'][i],name:['Бармен','Ключ от склада','Подвал','Таксист'][i]});render()});
- for(const t of ['finds','court','log']){await p.evaluate(t=>setTab(t),t);await shot('05_tab_'+t)}
+ for(const t of ['finds','sheet','court','log']){await p.evaluate(t=>setTab(t),t);await shot('05_tab_'+t)}
  await p.evaluate(()=>setTab('dossier'));
  // сцена
- await p.evaluate(()=>{act('search')});await shot('06_scene');
+ await p.evaluate(()=>{act('search')});await shot('06_scene');await p.evaluate(()=>{const E=me().enc;if(E&&E.e&&E.e.c){const i=E.e.c.findIndex(c=>c.ok);if(i>=0)act('choose',{i})}});await shot('06b_roll');await p.evaluate(()=>homeOpen('settings'));await shot('06c_home_settings');await p.evaluate(()=>homeClose());
  await p.evaluate(()=>{const m=me();if(m.enc){for(let i=0;i<3&&m.enc;i++){if(m.enc.res)act('close');else act('choose',{i:0})}}});
  // выбор карты
  await p.evaluate(()=>{pickFor('rumor')});await shot('07_pick');await p.evaluate(()=>{UI.pick=null;render()});
