@@ -2,7 +2,7 @@
 /* ============================ ПРИЛОЖЕНИЕ: состояние экрана, ходьба, отрисовка ============================
    UI — только то, что касается экрана этого игрока: камера, выделение, открытые окна, путь.
    Игра меняется только через act() → dispatch() движка; по событиям экран решает, что показать. */
-const UI={zoom:"near",cam:null,dragged:false,hover:null,sel:null,pick:null,csel:null,ritualMode:false,alert:null,sun:null,path:[],rush:false,setup:{}};
+const UI={tab:"dossier",zoom:"near",cam:null,dragged:false,hover:null,sel:null,pick:null,csel:null,ritualMode:false,alert:null,sun:null,path:[],rush:false,setup:{}};
 let M=null; // участник этого экрана, обновляется при каждой отрисовке
 let walkT=null;
 
@@ -12,15 +12,15 @@ function react(r){for(const e of r.events){if(e.pid&&e.pid!==ME)continue;
   if(e.type==="dawnWarn"){UI.alert={lvl:e.lvl,left:e.left,need:e.need}}
   if(e.type==="sun"){UI.sun={kind:e.kind,night:e.night,text:e.text}}
   if(e.type==="moved"){footstep();setDistrictSound();MAP3D.moved(e.to);if(!MAP3D.on)focusCam()}
-  if(e.type==="start"){M=me();focusCam(true)}
-  if(e.type==="night"){focusCam(true);setDistrictSound()}
+  if(e.type==="start"){M=me();focusCam(true);revealCity()}
+  if(e.type==="night"){UI.tab="dossier";focusCam(true);setDistrictSound()}
   if(e.type==="tradeAsk"){UI.pick={mode:"trade"}}}
   if(r.events.some(e=>(!e.pid||e.pid===ME)&&["enc","court","dawnWarn","dawn","sun","end","tradeAsk"].includes(e.type)))UI.path=[]}
 
 /* ---------- ходьба по пути: каждый шаг — команда move ---------- */
 function clickHex(k){const m=me();if(!m)return;
   if(UI.ritualMode){if(m.seen.has(k)){UI.ritualMode=false;act("ritual",{k})}return}
-  if(G.phase!=="walk"||m.enc||UI.pick)return;
+  if(G.phase!=="walk"||m.enc||UI.pick||UI.reveal)return;
   if(k===m.pos||!m.seen.has(k)){UI.sel=k;render();return}
   walkTo(k)}
 function walkTo(k){const m=me();const p=bfs(m.pos,k,m.seen);if(!p)return;UI.rush=false;UI.path=p;kickWalk()}
@@ -42,37 +42,41 @@ function doOption(n){const o=options(ME)[n];if(!o)return;
   if(o.need==="hex"){UI.ritualMode=true;return render()}
   act(o.cmd,o.args||{})}
 
-/* ---------- новая партия ---------- */
+/* ---------- новая партия ----------
+   Сначала создание персонажа, город строится за ним невидимо; показ города — после «Выйти в ночь». */
 function newCity(seed){
   const s=seed??Math.floor(Math.random()*1e9);const city=generate(s);rng=Math.random;
-  G=newWorld(s,city);Object.assign(UI,{cam:null,sel:null,pick:null,csel:null,ritualMode:false,alert:null,sun:null,path:[],rush:false,setup:{}});
-  buildBoard();render();
-  const total=CONFIG.radius+1;
-  for(let r=0;r<=CONFIG.radius;r++)setTimeout(()=>{document.querySelectorAll(`.tile[data-ring="${r}"]`).forEach(el=>el.classList.add("on"))},250+r*420);
-  setTimeout(()=>{$("#river")&&$("#river").classList.add("on")},250+total*420);
-  setTimeout(()=>{$("#map").classList.add("lit");if(G.phase==="gen"){G.phase="built";render()}},600+total*420+600);
-}
+  G=newWorld(s,city);Object.assign(UI,{tab:"dossier",reveal:false,cam:null,sel:null,pick:null,csel:null,ritualMode:false,alert:null,sun:null,path:[],rush:false,setup:{}});
+  buildBoard();G.phase="built";dispatch(ME,"toSetup");render()}
+// показ города: районы загораются кольцами от Элизиума, камера сначала видит весь город
+let revealT=[];
+function revealCity(){revealT.forEach(clearTimeout);revealT=[];UI.reveal="lighting";const total=CONFIG.radius+1;const fast=reduceMotion();
+  setZoom("far");
+  UI.revealR=-1;
+  for(let r=0;r<=CONFIG.radius;r++)revealT.push(setTimeout(()=>{document.querySelectorAll(`.tile[data-ring="${r}"]`).forEach(el=>el.classList.add("on"));UI.revealR=r;MAP3D.update()},fast?0:400+r*520));
+  revealT.push(setTimeout(()=>{$("#river")&&$("#river").classList.add("on")},fast?0:400+total*520));
+  revealT.push(setTimeout(()=>{$("#map")&&$("#map").classList.add("lit");if(UI.reveal){UI.reveal="ready";render()}},fast?0:900+total*520))}
+function endReveal(){revealT.forEach(clearTimeout);document.querySelectorAll(".tile").forEach(el=>el.classList.add("on"));$("#river")&&$("#river").classList.add("on");$("#map")&&$("#map").classList.add("lit");UI.reveal=false;setZoom("near")}
 
 /* ---------- отрисовка: каждый экран — свой модуль ---------- */
-function render(){if(!G)return;M=me();$("#hud").innerHTML=hud();let s="";
-  if(G.phase==="gen"||G.phase==="built")s=genCard();
-  else if(G.phase==="setup")s="";
-  else if(G.phase==="walk")s=(UI.ritualMode?`<div class="card intro"><h2>Ритуал</h2><p>Нажмите на любой открытый район: вы увидите его и соседние, вместе с невидимыми.</p><button onclick="UI.ritualMode=false;render()">Отмена</button></div>`:"")+pickCard()+(M.enc?"":encCard())+(!M.introDone&&!M.enc?introCard():"")+summonsCard()+caseCard(M.pos==="0,0"&&!M.enc&&!UI.pick)+(M.enc||UI.pick?"":hereCard()+actionsCard())+handCard()+rivalsCard()+journalCard();
-  else if(G.phase==="court")s=caseCard(false)+rivalsCard()+journalCard();
-  else if(G.phase==="day")s=dayCard()+caseCard(false)+rivalsCard()+journalCard();
-  else if(G.phase==="end")s=endCard()+journalCard();
+function render(){if(!G)return;M=me();$("#hud").innerHTML=hud();
   {const su=$("#setup");if(su){const on=G.phase==="setup";su.hidden=!on;if(on){su.innerHTML=setupScreen();document.body.classList.add("su-open")}else{su.innerHTML="";document.body.classList.remove("su-open")}}}
   {const ct=$("#court");if(ct){const on=G.phase==="court"&&!!G.court;ct.hidden=!on;ct.innerHTML=on?courtScreen():"";document.body.classList.toggle("ct-open",on)}}
   renderScene();
   {const ov=$("#ovl");if(ov){const h=sunHtml()||alertHtml();ov.hidden=!h;ov.innerHTML=h}}
-  $("#side").innerHTML=s;$("#zoom").hidden=!M;document.querySelectorAll("#zoom [data-z]").forEach(b=>b.classList.toggle("on",b.dataset.z===UI.zoom));
+  {const sd=$("#side"),st=sd.querySelector(".side-in")?sd.querySelector(".side-in").scrollTop:0;sd.innerHTML=sideHtml();const si=sd.querySelector(".side-in");if(si&&UI._tab===UI.tab)si.scrollTop=st;UI._tab=UI.tab}
+  {const bar=$("#bar"),h=barHtml();bar.hidden=!h;bar.innerHTML=h;document.body.classList.toggle("has-bar",!!h)}
+  $("#zoom").hidden=!M;document.querySelectorAll("#zoom [data-z]").forEach(b=>b.classList.toggle("on",b.dataset.z===UI.zoom));
   drawFog();drawMarks();MAP3D.update();save()}
+function closeMenu(){const m=$("#setMenu");if(m){m.hidden=true;$("#setBtn").setAttribute("aria-expanded","false")}}
 
 /* ---------- сохранение ---------- */
 function save(){if(!G||!me()||G.phase==="end")return;try{localStorage.setItem(SAVE_KEY,serialize())}catch(e){}}
 function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return false;const o=deserialize(t);if(!o.P||!o.P.length||o.phase==="end")return false;
   G=o;UI.cam=null;buildBoard();document.querySelectorAll(".tile").forEach(el=>el.classList.add("on"));$("#river").classList.add("on");$("#map").classList.add("lit");focusCam(true);render();return true}catch(e){console.warn(e);return false}}
 function boot(){initAudioUI();document.querySelectorAll("#zoom [data-z]").forEach(b=>b.onclick=()=>setZoom(b.dataset.z));
-  const vb=document.querySelector("#zoom [data-view]");if(vb){vb.hidden=!MAP3D.ok;vb.onclick=()=>{MAP3D.setOn(!MAP3D.on);render()}}
+  const vb=document.querySelector("[data-view]");if(vb){vb.hidden=!MAP3D.ok;vb.onclick=()=>{MAP3D.setOn(!MAP3D.on);render()}}
+  const sb=$("#setBtn"),sm=$("#setMenu");sb.onclick=e=>{e.stopPropagation();sm.hidden=!sm.hidden;sb.setAttribute("aria-expanded",String(!sm.hidden))};
+  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
   MAP3D.setOn(MAP3D.on);if(!load())newCity()}
 boot();

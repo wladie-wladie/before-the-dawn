@@ -1,22 +1,28 @@
-<div class="top">
-  <div class="brand"><h1>Before the Dawn</h1><span class="hint">фан-игра по Vampire: The Masquerade · v1.4 «Ночной город»</span></div>
+<header class="top">
+  <div class="brand" title="Before the Dawn · v1.5 «Оперативный центр»"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20.5 4.5a11.5 11.5 0 1 0 7 19.8A10 10 0 0 1 20.5 4.5z"/></svg><span class="sr">Before the Dawn</span></div>
   <div id="hud"></div>
-  <div class="row" style="margin-left:auto">
-    <div class="row" id="snd" role="group" aria-label="Звук"><span class="hint">Звук:</span><button data-m="off" class="on">выкл</button><button data-m="noir">нуар</button><button data-m="amb">эмбиент</button></div>
-    <label for="trackIn" class="tag" style="cursor:pointer">Свой трек…</label>
-    <input type="file" id="trackIn" accept="audio/*" hidden>
-    <button id="trackBtn" hidden>Трек: пауза</button>
-    <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" aria-label="Громкость" style="width:90px">
-    <button onclick="newCity()">Новый город</button>
+  <div class="top-r">
+    <button class="ib" data-view title="Переключить вид карты: 2D или 3D" aria-label="Вид карты"><svg viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z M9 4v13.5 M15 6.5V20"/></svg><span class="ib-t">3D</span></button>
+    <button class="ib" id="setBtn" title="Звук и партия" aria-label="Настройки" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
-</div>
-<div class="grid">
+  <div id="setMenu" class="menu" hidden>
+    <span class="eyebrow">Звук</span>
+    <div class="seg" id="snd" role="group" aria-label="Звук"><button data-m="off" class="on">Выкл</button><button data-m="noir">Нуар</button><button data-m="amb">Эмбиент</button></div>
+    <div class="menu-row"><label for="trackIn" class="btn-s">Свой трек…</label><input type="file" id="trackIn" accept="audio/*" hidden><button id="trackBtn" class="btn-s" hidden>Трек: пауза</button></div>
+    <label class="menu-row hint">Громкость <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" aria-label="Громкость"></label>
+    <span class="eyebrow">Партия</span>
+    <button onclick="closeMenu();newCity()">Новый город</button>
+    <span class="hint">v1.5 «Оперативный центр»</span>
+  </div>
+</header>
+<main class="grid">
   <div class="board"><div id="mapwrap"></div>
-    <div id="zoom" hidden><button data-z="near">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button><button data-view title="Переключить вид карты">2D</button></div></div>
-  <div class="col" id="side"></div>
-</div>
+    <div id="zoom" hidden><button data-z="near">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
+  <aside class="col" id="side"></aside>
+</main>
+<nav id="bar" hidden aria-label="Действия"></nav>
 <div id="setup" hidden></div>
 <div id="court" hidden></div>
 <div id="ovl" hidden></div>
 <div id="scene" hidden aria-label="Происшествие в районе"></div>
-<footer class="hint"><img class="darkpack" src="icons/legal/darkpack.png" alt="Dark Pack" width="56" height="56"><a href="v09.html" style="color:var(--dim)">Прошлая версия v0.9 «Город»</a><br>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</footer>
+<footer class="hint"><img class="darkpack" src="icons/legal/darkpack.png" alt="Dark Pack" width="40" height="40"><span>Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.</span></footer>

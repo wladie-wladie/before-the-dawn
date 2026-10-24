@@ -10,7 +10,7 @@ function sceneHtml(){if(!G||G.phase!=="walk"||!M||!M.enc)return "";const E=M.enc
   const art=`art/ev_${SCENE_ART[h.t]||"res"}.webp`;
   let body;
   if(E.res)body=`<p class="sc-choice">${esc(E.res.choice||"")}</p>${E.res.dice?`<div class="dice sc-dice">${diceHtml(E.res.dice)} <span class="hint">${E.res.ok?"удача":"неудача"}</span></div>`:""}
-    <p class="sc-text">${E.res.text}</p>${E.res.fx?`<p class="fx">${E.res.fx}</p>`:""}<button class="primary sc-go" onclick="act('close')">Дальше</button>`;
+    <p class="sc-text">${E.res.text}</p>${E.res.fx?`<p class="fx">${E.res.fx}</p>`:""}<button class="go sc-go" onclick="act('close')"><span>Дальше</span>${ico("arrow")}</button>`;
   else body=`<p class="sc-text">${E.e.x||""}</p><div class="sc-opts">${E.e.c.map((c,i)=>{const roll=c.ok||c.roll||c.inf;
       return `<button class="sc-opt${roll?" roll":""}" ${c.dis?"disabled":""} onclick="act('choose',{i:${i}})"><span>${c.t}</span>${roll?'<em><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="5.5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="10.5" cy="10.5" r="1.2" fill="currentColor"/></svg>бросок</em>':"<i>›</i>"}</button>`}).join("")}</div>`;
   const finds=M.hand.slice(-6).reverse();

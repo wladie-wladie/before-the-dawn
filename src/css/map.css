@@ -27,21 +27,6 @@
 .tip{font-family:var(--f-mono);font-size:9px;fill:var(--lamp);paint-order:stroke;stroke:#0b0c12;stroke-width:3px}
 #hits polygon{cursor:pointer}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
-footer{margin-top:22px;max-width:1000px}
-.crd{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.crd.dirty{border-color:#6b3a44}
-.crd-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
-.crd .ki{color:var(--lamp);font-size:.9rem}
-.crd button{align-self:flex-start;margin-top:4px;padding:4px 10px}
-.tag.bad{color:var(--blood);border-color:var(--blood)}
-.hand{display:flex;flex-direction:column;gap:6px}
-.cell{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px}
-.cell-h b{font-family:var(--f-display)}
-.rum{font-style:italic;color:#cdb9c4}
-.bon{font-size:.86rem;line-height:1.45}
-.bong{font-family:var(--f-mono);font-size:7px;paint-order:stroke;stroke:#0b0c12;stroke-width:2px}
-.court-log{display:flex;flex-direction:column;gap:4px;font-size:.88rem;max-height:260px;overflow:auto}
-.court-log p{border-left:2px solid var(--line);padding-left:6px}
-.card.case{border-color:#7a6430}
 #mapwrap,#mapwrap *{-webkit-user-select:none;user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
 #map{touch-action:none;cursor:grab}#map:active{cursor:grabbing}
+.bong{font-family:var(--f-mono);font-size:7px;paint-order:stroke;stroke:#0b0c12;stroke-width:2px}

@@ -73,7 +73,7 @@ function buildBoard(){
   MAP3D.rebuild();
 }
 function drawFog(){
-  if(G.phase==="gen"||G.phase==="built"||G.phase==="setup"||!me()){$("#fog").innerHTML="";return}
+  if(G.phase==="gen"||G.phase==="built"||G.phase==="setup"||!me()||UI.reveal){$("#fog").innerHTML="";return}
   const M=me();
   let s="";
   for(const h of Object.values(G.city.map)){

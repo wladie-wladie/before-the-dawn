@@ -478,11 +478,12 @@ function tickToken(dt){if(!tok||!route.length)return;const left0=route.reduce((s
 /* --- синхронизация с игрой: туман, стороны, подписи, соперники, погода --- */
 let lastNight=-1;
 function update(){if(!renderer||!city||!G)return;const m=me();const playing=m&&m.clan&&["walk","day","end","court"].includes(G.phase);
-  for(const H of Object.values(hexes)){const k=H.h.k;const seenK=!playing||m.seen.has(k);const vis=!playing||m.visited.has(k);
+  const rv=UI.reveal?(UI.revealR??99):-1;
+  for(const H of Object.values(hexes)){const k=H.h.k;const seenK=!playing||m.seen.has(k)||H.h.ring<=rv;const vis=!playing||m.visited.has(k);
     H.fogCap.visible=!seenK;H.g.children.forEach(o=>{if(o!==H.fogCap&&o!==H.ground&&o!==H.ring&&o!==H.dim)o.visible=seenK});
     const D=G.dist&&G.dist[k];const own=playing&&D&&D.own;H.ring.visible=seenK;H.ring.material.color.set(own?FAC[own].color:0x555566);H.ring.material.opacity=own?(Math.abs(D.c)>=4?.85:.5):.16;
     if(playing&&G.phase==="walk"&&!m.enc&&nbrs(m.pos).includes(k))H.ring.material.opacity=Math.max(H.ring.material.opacity,.45)}
-  for(const l of labels){const h=city.map[l.k];const seenK=!playing||m.seen.has(l.k);const vis=!playing||m.visited.has(l.k);l.el.dataset.on=seenK?"1":"0";l.el.textContent=vis?h.name:TYPES[h.t].n;l.el.classList.toggle("dim",!vis)}
+  for(const l of labels){const h=city.map[l.k];const seenK=!playing||m.seen.has(l.k)||h.ring<=rv;const vis=!playing||m.visited.has(l.k);l.el.dataset.on=seenK?"1":"0";l.el.textContent=vis?h.name:TYPES[h.t].n;l.el.classList.toggle("dim",!vis)}
   if(playing){const pin=world.userData.pin;const [hx,hz]=hexCenter(m.haven);pin.position.set(hx,0,hz);pin.visible=true;
     setFigColor(tok,CLANS[m.disguise||m.clan].color);tok.visible=G.phase==="walk"||G.phase==="court";
     if(!tokAt||(tokAt.k!==m.pos&&!route.length)){tokAt=spotOf(m.pos);const [x,z]=posOf(tokAt);tok.position.set(x,0,z);route=[]}
@@ -595,7 +596,7 @@ function mount(){if(mounted||!renderer)return;mounted=true;host.appendChild(rend
   addEventListener("resize",resize);if(window.ResizeObserver)new ResizeObserver(resize).observe(host);requestAnimationFrame(frame)}
 function attach(){const w=document.getElementById("mapwrap");if(w&&host.parentNode!==w)w.appendChild(host);document.body.classList.toggle("v3d",on)}
 function setOn(v){on=!!v&&!!renderer;try{localStorage.setItem(VIEW_KEY,on?"3d":"2d")}catch(e){}attach();if(on){mount();resize();if(G&&G.city!==city)buildCity();update();focus(true)}
-  document.querySelectorAll("#zoom [data-view]").forEach(b=>b.textContent=on?"2D":"3D")}
+  document.querySelectorAll("[data-view] .ib-t").forEach(b=>b.textContent=on?"2D":"3D")}
 function rebuild(){attach();if(!on)return;mount();if(ART.ready)buildCity();else loadArt(()=>{buildCity();focus(true)})}
 on=wantOn();
 return {get on(){return on},ok:!!renderer,setOn,rebuild,update:()=>{if(on)update()},moved:k=>{if(on)moved(k)},focus:i=>{if(on)focus(i)}};
