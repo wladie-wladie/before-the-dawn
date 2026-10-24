@@ -2098,13 +2098,15 @@ function buildCity(){if(!renderer)return;
   const base=add(world,new THREE.Mesh(new THREE.CircleGeometry(70,48),new THREE.MeshStandardMaterial({color:0x05060a,roughness:1})),0,-.45,0);base.rotation.x=-Math.PI/2;
   for(const h of Object.values(city.map)){
     const [x,z]=hexCenter(h.k);const g=new THREE.Group();g.position.set(x,0,z);const isRiver=h.t==="river";
-    const ground=new THREE.Mesh(new THREE.CylinderGeometry(HR,HR,.4,6),isRiver?((ART.ready&&gndMat("water",3))||M.water):groundMat(h.t));
-    ground.position.y=isRiver?-.55:-.2;if(isRiver)WATER.push(ground.material);ground.userData.k=h.k;g.add(ground);
+    const hexTop=r=>{const q=new THREE.CircleGeometry(r,6);q.rotateZ(Math.PI/6);q.rotateX(-Math.PI/2);return q};   // только верх гекса, без боковых стенок
+    const ground=new THREE.Mesh(hexTop(HR*1.003),isRiver?((ART.ready&&gndMat("water",3))||M.water):groundMat(h.t));
+    ground.position.y=isRiver?-.35:0;if(isRiver)WATER.push(ground.material);ground.userData.k=h.k;g.add(ground);
     CUR_T=h.t;if(!isRiver)layoutHex(g,h);else riverHex(g,h);
     const ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({length:6},(_,i)=>{const a=i*Math.PI/3;return new THREE.Vector3(Math.sin(a)*HR*.94,.06,Math.cos(a)*HR*.94)})),
       new THREE.LineBasicMaterial({color:0x555566,transparent:true,opacity:.18}));g.add(ring);
-    const fogCap=new THREE.Mesh(new THREE.CylinderGeometry(HR*1.01,HR*1.01,.5,6,1,false),new THREE.MeshBasicMaterial({color:0x06070c,transparent:true,opacity:.92,depthWrite:false}));fogCap.position.y=.25;g.add(fogCap);
-    const dim=new THREE.Mesh(new THREE.CylinderGeometry(HR*1.005,HR*1.005,4.5,6,1,true),new THREE.MeshBasicMaterial({color:0x06070c,transparent:true,opacity:.0,depthWrite:false,side:THREE.DoubleSide}));dim.position.y=2.2;g.add(dim);
+    // неизведанный район — просто тёмная земля вровень с городом
+    const fogCap=new THREE.Mesh(hexTop(HR*1.01),new THREE.MeshBasicMaterial({color:0x07080d}));fogCap.position.y=isRiver?-.34:.02;g.add(fogCap);
+    const dim=new THREE.Object3D();g.add(dim);
     world.add(g);hexes[h.k]={h,g,ground,ring,fogCap,dim};
     const el=document.createElement("div");el.className="lbl";lblBox.appendChild(el);labels.push({el,k:h.k,pos:new THREE.Vector3(x,1.3,z)});
   }
@@ -2142,7 +2144,6 @@ let lastNight=-1;
 function update(){if(!renderer||!city||!G)return;const m=me();const playing=m&&m.clan&&["walk","day","end","court"].includes(G.phase);
   for(const H of Object.values(hexes)){const k=H.h.k;const seenK=!playing||m.seen.has(k);const vis=!playing||m.visited.has(k);
     H.fogCap.visible=!seenK;H.g.children.forEach(o=>{if(o!==H.fogCap&&o!==H.ground&&o!==H.ring&&o!==H.dim)o.visible=seenK});
-    H.dim.material.opacity=seenK&&!vis?.38:0;H.dim.visible=seenK&&!vis;
     const D=G.dist&&G.dist[k];const own=playing&&D&&D.own;H.ring.visible=seenK;H.ring.material.color.set(own?FAC[own].color:0x555566);H.ring.material.opacity=own?(Math.abs(D.c)>=4?.85:.5):.16;
     if(playing&&G.phase==="walk"&&!m.enc&&nbrs(m.pos).includes(k))H.ring.material.opacity=Math.max(H.ring.material.opacity,.45)}
   for(const l of labels){const h=city.map[l.k];const seenK=!playing||m.seen.has(l.k);const vis=!playing||m.visited.has(l.k);l.el.dataset.on=seenK?"1":"0";l.el.textContent=vis?h.name:TYPES[h.t].n;l.el.classList.toggle("dim",!vis)}
@@ -2200,17 +2201,30 @@ function focus(instant){if(!city)return;const m=me();const far=UI.zoom==="far"||
 
 /* --- ввод --- */
 let drag=null,pinch=null,moved_=0;
-function bindInput(){const el=renderer.domElement;
-  el.addEventListener("pointerdown",e=>{el.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,b:e.button,id:e.pointerId,shift:e.shiftKey};moved_=0;cam.goal=null});
-  el.addEventListener("pointermove",e=>{if(!drag||drag.id!==e.pointerId){hoverAt(e);return}const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;moved_+=Math.abs(dx)+Math.abs(dy);if(moved_<6)return;
-    if(drag.b===2||drag.shift||e.pointerType==="touch"&&e.isPrimary===false){const f=cam.dist*.0016;const fw=new THREE.Vector3(Math.sin(cam.theta),0,Math.cos(cam.theta)),rt=new THREE.Vector3(fw.z,0,-fw.x);cam.target.addScaledVector(rt,-dx*f).addScaledVector(fw,-dy*f);follow=false}
-    else{cam.theta-=dx*.006;cam.phi=Math.min(1.35,Math.max(.3,cam.phi-dy*.005))}need=true});
-  el.addEventListener("pointerup",e=>{if(drag&&moved_<6){const k=hexAt(e);if(k)clickHex(k)}drag=null});
+/* управление как в «Эпохе Сумерек»: левая кнопка — тянуть карту (точка под курсором остаётся под курсором),
+   правая — вращать и наклонять вокруг центра экрана, колесо — плавное приближение к точке под курсором,
+   щелчок без сдвига — выбрать район; на сенсорном экране — один палец тянет, два — масштаб */
+const groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+function groundAt(cx,cy){const r=renderer.domElement.getBoundingClientRect();mouse.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);
+  const v=new THREE.Vector3();return ray.ray.intersectPlane(groundPlane,v)?v:null}
+let zGo=null;
+function zoomStep(){if(!zGo)return;const done=Math.abs(Math.log(zGo.d/cam.dist))<.004;cam.dist=done?zGo.d:cam.dist*Math.pow(zGo.d/cam.dist,.24);placeCam();
+  const h=groundAt(zGo.sx,zGo.sy);if(h&&zGo.w){cam.target.x+=zGo.w.x-h.x;cam.target.z+=zGo.w.z-h.z;placeCam()}need=true;if(done)zGo=null}
+function bindInput(){const el=renderer.domElement;const pts=new Map();
+  el.addEventListener("pointerdown",e=>{el.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);cam.goal=null;zGo=null;
+    if(pts.size===2){const [a,b]=[...pts.values()];pinch=Math.hypot(a[0]-b[0],a[1]-b[1]);drag=null;return}
+    drag={x:e.clientX,y:e.clientY,b:e.button,id:e.pointerId,mode:e.button===2?"orb":"pan",w:groundAt(e.clientX,e.clientY)};moved_=0});
+  el.addEventListener("pointermove",e=>{if(pts.has(e.pointerId))pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d>0){cam.dist=Math.min(95,Math.max(5,cam.dist*pinch/d));pinch=d;need=true}return}
+    if(!drag||drag.id!==e.pointerId){hoverAt(e);return}const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;moved_+=Math.abs(dx)+Math.abs(dy);if(moved_<6)return;
+    if(drag.mode==="orb"){cam.theta-=dx*.0052;cam.phi=Math.min(1.3,Math.max(.12,cam.phi-dy*.0044))}
+    else if(drag.w){placeCam();const h=groundAt(e.clientX,e.clientY);if(h){cam.target.x+=drag.w.x-h.x;cam.target.z+=drag.w.z-h.z}follow=false}
+    need=true});
+  const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(drag&&drag.id===e.pointerId){if(drag.mode==="pan"&&moved_<6&&e.type==="pointerup"){const k=hexAt(e);if(k)clickHex(k)}drag=null}};
+  el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
   el.addEventListener("contextmenu",e=>e.preventDefault());
-  el.addEventListener("wheel",e=>{e.preventDefault();cam.goal=null;cam.dist=Math.min(95,Math.max(5,cam.dist*(e.deltaY>0?1.1:1/1.1)));need=true},{passive:false});
-  el.addEventListener("touchstart",e=>{if(e.touches.length===2){const [a,b]=e.touches;pinch=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);drag=null}},{passive:true});
-  el.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinch){const [a,b]=e.touches;const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);cam.dist=Math.min(95,Math.max(5,cam.dist*pinch/d));pinch=d;need=true}},{passive:true});
-  el.addEventListener("touchend",()=>{pinch=null},{passive:true})}
+  el.addEventListener("wheel",e=>{e.preventDefault();cam.goal=null;const base=zGo?zGo.d:cam.dist;
+    const d=Math.min(95,Math.max(4,base*Math.exp(e.deltaY*(e.deltaMode?.05:.0015))));zGo={d,sx:e.clientX,sy:e.clientY,w:groundAt(e.clientX,e.clientY)};follow=false;need=true},{passive:false});}
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let hov=null;
 function hexAt(e){const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects(Object.values(hexes).map(H=>H.ground),false)[0];return hit?hit.object.userData.k:null}
@@ -2223,7 +2237,7 @@ function frame(t){requestAnimationFrame(frame);const dt=Math.min(.1,(t-t0)/1000)
   if(!on||document.hidden||document.body.classList.contains("sc-open")||!world)return;
   if(window.BTD_TEST){if(t-(frame.R||0)<2500)return;frame.R=t} // в автотестах (программный рендер) рисуем редко
   if(cam.goal){const g=cam.goal,k=1-Math.pow(.02,dt);cam.target.lerp(g.t,k);cam.dist+=(g.d-cam.dist)*k;cam.phi+=(g.phi-cam.phi)*k;if(cam.target.distanceTo(g.t)<.05&&Math.abs(cam.dist-g.d)<.1)cam.goal=null}
-  tickToken(dt);if(follow&&tok&&!cam.goal){const p=tok.position;cam.target.x+=(p.x-cam.target.x)*Math.min(1,dt*3);cam.target.z+=(p.z-cam.target.z)*Math.min(1,dt*3)}
+  zoomStep();tickToken(dt);if(follow&&tok&&!cam.goal&&!drag&&!zGo){const p=tok.position;cam.target.x+=(p.x-cam.target.x)*Math.min(1,dt*3);cam.target.z+=(p.z-cam.target.z)*Math.min(1,dt*3)}
   placeCam();
   if(LAMPS.length&&(!frame.L||t-frame.L>350)){frame.L=t;const v=new THREE.Vector3();const ls=LAMPS.map(l=>{l.grp.localToWorld(v.set(l.x,l.y,l.z));return {p:v.clone(),c:l.col,d:v.distanceToSquared(cam.target)}}).sort((a,b)=>a.d-b.d).slice(0,PL.length);
     PL.forEach((L,i)=>{const l=ls[i];if(!l){L.intensity=0;return}L.position.copy(l.p).y-=.05;L.color.setHex(l.c);L.intensity=1.6})}
