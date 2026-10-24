@@ -10,7 +10,7 @@ const [,,url,out,W='1600',H='900']=process.argv;
  await shot('00_home');await btn(/Новая игра/).click();await p.locator('.su-card').first().click();await shot('02_setup');
  await btn('Дальше').click();await p.locator('.su-big').first().click();await btn('Дальше').click();
  await p.locator('.su-rule').nth(1).click();await p.locator('.su-rule').nth(3).click();await shot('02b_rules');await btn('Дальше').click();
- await p.locator('.su-preds .su-card').nth(1).click();await shot('02c_pred');await btn('Выйти в ночь').click();await shot('03a_reveal');await p.waitForTimeout(6000);await btn('Начать ночь').click();
+ await p.locator('.su-preds .su-card').nth(1).click();await p.locator('.dots.ed button').nth(3).click();await p.locator('.dots.ed button').nth(6).click();await shot('02c_pred');await btn('Заполнить автоматически').click();await p.evaluate(()=>{const C=suSheet();C.dp=DISC[UI.setup.clan][1];render()});await shot('02d_auto');await btn('Выйти в ночь').click();await shot('03a_reveal');await p.waitForTimeout(6000);await btn('Начать ночь').click();
  await shot('03_intro');await btn('Понятно').click();await shot('04_walk');
  await p.evaluate(()=>{const m=me();for(let i=0;i<4;i++)m.hand.push({...m.hand[0],id:'x'+i,k:['c','i','p','c'][i],name:['Бармен','Ключ от склада','Подвал','Таксист'][i]});render()});
  for(const t of ['finds','sheet','court','log']){await p.evaluate(t=>setTab(t),t);await shot('05_tab_'+t)}

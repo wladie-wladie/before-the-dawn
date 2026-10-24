@@ -69,6 +69,8 @@ function render(){if(!G)return;M=me();$("#hud").innerHTML=hud();
   {const bar=$("#bar"),h=barHtml();bar.hidden=!h;bar.innerHTML=h;document.body.classList.toggle("has-bar",!!h)}
   $("#zoom").hidden=!M;document.querySelectorAll("#zoom [data-z]").forEach(b=>b.classList.toggle("on",b.dataset.z===UI.zoom));
   drawFog();drawMarks();MAP3D.update();save()}
+// пробел: камера возвращается к персонажу в исходном ракурсе
+function camHome(){if(!G||!me()||!me().clan)return;if(UI.zoom==="far"){UI.zoom="near";render()}if(MAP3D.on)MAP3D.recenter();else focusCam()}
 function closeMenu(){const m=$("#setMenu");if(m){m.hidden=true;$("#setBtn").setAttribute("aria-expanded","false")}}
 
 /* ---------- сохранение ---------- */
@@ -78,7 +80,10 @@ function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return false;co
 function boot(){initAudioUI();document.querySelectorAll("#zoom [data-z]").forEach(b=>b.onclick=()=>setZoom(b.dataset.z));
   const vb=document.querySelector("[data-view]");if(vb){vb.hidden=!MAP3D.ok;vb.onclick=()=>{MAP3D.setOn(!MAP3D.on);render()}}
   const sb=$("#setBtn"),sm=$("#setMenu");sb.onclick=e=>{e.stopPropagation();sm.hidden=!sm.hidden;sb.setAttribute("aria-expanded",String(!sm.hidden))};
-  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!sm.hidden)return closeMenu();if(UI.home&&UI.home!=="main")return homeOpen("main");if(UI.home&&hasGame())return homeClose();if(!UI.home)homeOpen()});
+  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.code==="Space"&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const t=e.target;if(t&&t.matches&&t.matches("input,textarea,select,[contenteditable]"))return;
+    if(UI.home||!sm.hidden||G.phase==="setup"||document.body.classList.contains("sc-open")||document.body.classList.contains("ct-open")||!$("#ovl").hidden)return;
+    e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();camHome();return}
+  if(e.key!=="Escape")return;if(!sm.hidden)return closeMenu();if(UI.home&&UI.home!=="main")return homeOpen("main");if(UI.home&&hasGame())return homeClose();if(!UI.home)homeOpen()});
   const top=document.querySelector(".top");const setTop=()=>document.documentElement.style.setProperty("--topH",top.offsetHeight+"px");setTop();if(window.ResizeObserver)new ResizeObserver(setTop).observe(top);addEventListener("resize",setTop);
   MAP3D.setOn(MAP3D.on);if(!load())newCity();homeOpen()}
 boot();

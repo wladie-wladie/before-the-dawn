@@ -21,11 +21,11 @@ const here=p=>G.city.map[p.pos];
 /* ---------- начало партии ---------- */
 CMD.toSetup={sys:true,can:()=>G.phase==="built"?null:"город ещё строится",run:()=>{G.phase="setup"}};
 CMD.start={sys:true,can:(p,a)=>G.phase!=="setup"?"не время":!a.clan||!a.fac?"выберите клан и сторону":null,
-  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final",a.dice,a.pred)};
-function startGame(clan,fac,death,diceMode,pred){
+  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final",a.dice,a.pred,a.sheet)};
+function startGame(clan,fac,death,diceMode,pred,custom){
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
-  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;G.dice=diceMode==="v5"?"v5":"simple";M.sheet=mkSheet(clan,pred);
+  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;G.dice=diceMode==="v5"?"v5":"simple";M.sheet=mkSheet(clan,pred,custom);
   reveal(M,h.k);M.visited.add(h.k);M.visitedTonight.add(h.k);M.seen.add("0,0");reveal(M,"0,0");
   G.prince=pick(PRINCES);G.persona=pick(Object.keys(PERSONAS));
   initDistricts();

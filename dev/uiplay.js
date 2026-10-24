@@ -8,7 +8,7 @@ const [,,page,clan='tor',N='300',MODE='simple']=process.argv;
  
  const names={tor:'Тореадор',ven:'Вентру',nos:'Носферату',bru:'Бруха',tre:'Тремер',gan:'Гангрел',tzi:'Цимисх'};
  await btn(/Новая игра/).click();await p.locator('.su-card').filter({hasText:names[clan]}).first().click();await btn('Дальше').click();
- await p.locator('.su-big').first().click();await btn('Дальше').click();await p.locator('.su-rule').nth(1).click();await p.locator('.su-rule').nth(MODE==='v5'?3:2).click();if(MODE==='v5'){await btn('Дальше').click();await p.locator('.su-preds .su-card').nth(Math.floor(Math.random()*4)).click()}await btn('Выйти в ночь').click();await p.waitForTimeout(500);await p.evaluate(()=>endReveal());
+ await p.locator('.su-big').first().click();await btn('Дальше').click();await p.locator('.su-rule').nth(1).click();await p.locator('.su-rule').nth(MODE==='v5'?3:2).click();if(MODE==='v5'){await btn('Дальше').click();await p.locator('.su-preds .su-card').nth(Math.floor(Math.random()*4)).click();await btn('Заполнить автоматически').click()}await btn('Выйти в ночь').click();await p.waitForTimeout(500);await p.evaluate(()=>endReveal());
  await btn('Понятно').click();
  const seen={};let walked=0;
  for(let i=0;i<Number(N);i++){

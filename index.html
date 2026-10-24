@@ -328,6 +328,22 @@ body.hm-open{overflow:hidden}
 .tabs.t5{grid-template-columns:repeat(5,1fr)}.tabs.t5 button .ico{display:none}.tabs.t5 button{font-size:.84rem;padding:8px 2px}
 @media (max-width:760px){.sheet{grid-template-columns:1fr 1fr}.sheet .sh-col:last-child{grid-column:1/-1}}
 
+/* ручное заполнение листа */
+.sh-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.quota{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;color:var(--dim);margin-bottom:4px}
+.quota .q b{color:var(--gold2)}.quota .q.done{opacity:.45}.quota .q.done b{color:var(--dim)}.quota .q.over b{color:#e0606b}
+.dots.ed{gap:4px}.dots.ed button{width:16px;height:16px;padding:0;border-radius:50%;border:1px solid #5a5662;background:transparent;cursor:pointer}
+.dots.ed button.on{background:var(--blood);border-color:var(--blood)}
+.dots.ed button:hover:not(:disabled){border-color:var(--gold2)}
+.dots.ed button:disabled{opacity:.25}
+.sh-r.ed{padding:2px 0}
+.plus{font-style:normal;font-size:.72rem;font-weight:700;color:var(--gold2);margin-left:4px}
+.sh-disc{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:8px 10px;font-size:.9rem}
+.sh-disc.on{border-color:var(--gold);background:linear-gradient(90deg,rgba(217,168,90,.14),transparent)}
+.sh-disc .dots i{width:9px;height:9px}
+.sh-disc i{font-style:normal}
+@media (max-width:760px){.sheet.ed{grid-template-columns:1fr}.dots.ed button{width:20px;height:20px}}
+
 /* карта */
 .tile{opacity:0;transition:opacity .9s ease}
 .tile .in{transform:scale(.55);transform-box:fill-box;transform-origin:center;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
@@ -547,7 +563,7 @@ body.sc-open{overflow:hidden}
 </header>
 <main class="grid">
   <div class="board"><div id="mapwrap"></div>
-    <div id="zoom" hidden><button data-z="near">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
+    <div id="zoom" hidden><button data-z="near" title="К персонажу — пробел">К себе</button><button data-z="mid">Район</button><button data-z="far">Весь город</button></div></div>
   <aside class="col" id="side"></aside>
 </main>
 <nav id="bar" hidden aria-label="Действия"></nav>
@@ -1468,9 +1484,15 @@ const PREDATORS={
   sand:{n:"Песочный человек",line:"Пьёте у спящих: окно, тишина, никто не проснётся.",pool:"dex+stealth",skill:"stealth",fav:["res","old","uni"],fx:"Охота в жилых кварталах, старом городе и у университета — +1 куб."},
   bag:{n:"Мешочник",line:"Кровь из пакетов: больница, банк крови, свой человек.",pool:"int+street",skill:"street",fav:["hosp","market"],fx:"Охота у больницы и на рынке — +1 куб."}};
 const DISC_DOTS=[2,1,1];
-function mkSheet(clan,pred){const T=SHEETS[clan]||SHEETS.tor;const a={};Object.keys(ATTR).forEach((k,i)=>a[k]=T.a[i]);
-  const s={...T.s};const P=PREDATORS[pred]||PREDATORS.sand;s[P.skill]=Math.min(4,(s[P.skill]||0)+1);
-  const d={};(DISC[clan]||[]).forEach((n,i)=>d[n]=DISC_DOTS[i]||1);return {a,s,d,pred:pred in PREDATORS?pred:"sand"}}
+// распределение точек при создании: атрибуты 4·3·3·3·2·2·2·2·1, навыки 3·2·2·2·1·1·1·1
+const ATTR_NEED={4:1,3:3,2:4,1:1},SKILL_NEED={3:1,2:3,1:4};
+function quotaLeft(need,vals){const left={...need};for(const v of Object.values(vals))if(v&&left[v]!=null)left[v]--;return left}
+function quotaOk(need,vals,all){const left=quotaLeft(need,vals);return Object.values(left).every(x=>x===0)&&(!all||all.every(k=>vals[k]))}
+function autoSheet(clan){const T=SHEETS[clan]||SHEETS.tor;const a={};Object.keys(ATTR).forEach((k,i)=>a[k]=T.a[i]);return {a,s:{...T.s},dp:(DISC[clan]||[])[0]}}
+function sheetValid(c){return !!(c&&c.a&&c.s&&quotaOk(ATTR_NEED,c.a,Object.keys(ATTR))&&quotaOk(SKILL_NEED,c.s))}
+function mkSheet(clan,pred,custom){const base=sheetValid(custom)?custom:autoSheet(clan);const a={...base.a};
+  const s={};for(const [k,v] of Object.entries(base.s))if(v)s[k]=v;const P=PREDATORS[pred]||PREDATORS.sand;s[P.skill]=Math.min(4,(s[P.skill]||0)+1);
+  const ds=DISC[clan]||[];const dp=ds.includes(base.dp)?base.dp:ds[0];const d={};ds.forEach(n=>d[n]=n===dp?2:1);return {a,s,d,pred:pred in PREDATORS?pred:"sand"}}
 const isV5=()=>!!(G&&G.dice==="v5");
 // пулы для выборов в событиях: «атрибут+навык», «атрибут+D:Дисциплина/запасной навык»
 const POOLS={"Внушить ему, что вы — проверка":"man+D:Доминирование/subt","Пройти мимо них внутрь":"dex+stealth","Порыться в разрешениях на снос":"int+inv",
@@ -1640,11 +1662,11 @@ const here=p=>G.city.map[p.pos];
 /* ---------- начало партии ---------- */
 CMD.toSetup={sys:true,can:()=>G.phase==="built"?null:"город ещё строится",run:()=>{G.phase="setup"}};
 CMD.start={sys:true,can:(p,a)=>G.phase!=="setup"?"не время":!a.clan||!a.fac?"выберите клан и сторону":null,
-  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final",a.dice,a.pred)};
-function startGame(clan,fac,death,diceMode,pred){
+  run:(p,a)=>startGame(a.clan,a.fac,a.death||"final",a.dice,a.pred,a.sheet)};
+function startGame(clan,fac,death,diceMode,pred,custom){
   const cands=Object.values(G.city.map).filter(h=>["res","old","club","theatre","slum","market"].includes(h.t)&&h.ring>=2&&h.ring<=3);
   const h=pick(cands.length?cands:Object.values(G.city.map).filter(h=>h.t!=="river"&&h.t!=="ely"));
-  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;G.dice=diceMode==="v5"?"v5":"simple";M.sheet=mkSheet(clan,pred);
+  const M=mkPlayer(ME,"human",clan,h.k);M.fac=fac;M.facStart=fac;G.P=[M];G.deathMode=death;G.dice=diceMode==="v5"?"v5":"simple";M.sheet=mkSheet(clan,pred,custom);
   reveal(M,h.k);M.visited.add(h.k);M.visitedTonight.add(h.k);M.seen.add("0,0");reveal(M,"0,0");
   G.prince=pick(PRINCES);G.persona=pick(Object.keys(PERSONAS));
   initDistricts();
@@ -2527,6 +2549,9 @@ function tickExtras(T){for(const c of cops){if(!c.visible)continue;const u=c.use
   if(seal&&seal.visible){seal.position.y=3.6+Math.sin(T*1.2)*.15;seal.material.rotation=Math.sin(T*.5)*.15}}
 
 /* --- камера: «к себе», «район», «весь город» --- */
+// пробел, как в «Эпохе Сумерек»: исходный наклон и поворот, камера возвращается к персонажу; масштаб сохраняется
+function recenter(){if(!city||!tok)return;follow=true;const d=clamp(cam.dist,9,30);const th=.55+Math.round((cam.theta-.55)/(2*Math.PI))*2*Math.PI;
+  cam.goal={t:tok.position.clone(),d,phi:1.02,theta:th};need=true}
 function focus(instant){if(!city)return;const m=me();const far=UI.zoom==="far"||!m||!m.clan;follow=!far;
   const t=far?new THREE.Vector3():tok.position.clone();const d=far?Math.max(40,CONFIG.radius*11):UI.zoom==="mid"?22:13;
   cam.goal={t,d,phi:far?.9:1.02};if(instant){cam.target.copy(t);cam.dist=d;cam.phi=cam.goal.phi;cam.goal=null;placeCam()}need=true}
@@ -2568,7 +2593,7 @@ let t0=performance.now();
 function frame(t){requestAnimationFrame(frame);const dt=Math.min(.1,(t-t0)/1000);t0=t;const T=t/1000;
   if(!on||document.hidden||document.body.classList.contains("sc-open")||!world)return;
   if(window.BTD_TEST){if(t-(frame.R||0)<2500)return;frame.R=t} // в автотестах (программный рендер) рисуем редко
-  if(cam.goal){const g=cam.goal,k=1-Math.pow(.02,dt);cam.target.lerp(g.t,k);cam.dist+=(g.d-cam.dist)*k;cam.phi+=(g.phi-cam.phi)*k;if(cam.target.distanceTo(g.t)<.05&&Math.abs(cam.dist-g.d)<.1)cam.goal=null}
+  if(cam.goal){const g=cam.goal,k=1-Math.pow(.02,dt);cam.target.lerp(g.t,k);cam.dist+=(g.d-cam.dist)*k;cam.phi+=(g.phi-cam.phi)*k;if(g.theta!=null)cam.theta+=(g.theta-cam.theta)*k;if(cam.target.distanceTo(g.t)<.05&&Math.abs(cam.dist-g.d)<.1&&(g.theta==null||Math.abs(g.theta-cam.theta)<.01))cam.goal=null}
   zoomStep();tickToken(dt);if(follow&&tok&&!cam.goal&&!drag&&!zGo){const p=tok.position;cam.target.x+=(p.x-cam.target.x)*Math.min(1,dt*3);cam.target.z+=(p.z-cam.target.z)*Math.min(1,dt*3)}
   placeCam();
   if(LAMPS.length&&(!frame.L||t-frame.L>350)){frame.L=t;const v=new THREE.Vector3();const ls=LAMPS.map(l=>{l.grp.localToWorld(v.set(l.x,l.y,l.z));return {p:v.clone(),c:l.col,d:v.distanceToSquared(cam.target)}}).sort((a,b)=>a.d-b.d).slice(0,PL.length);
@@ -2600,7 +2625,7 @@ function setOn(v){on=!!v&&!!renderer;try{localStorage.setItem(VIEW_KEY,on?"3d":"
   document.querySelectorAll("[data-view] .ib-t").forEach(b=>b.textContent=on?"2D":"3D")}
 function rebuild(){attach();if(!on)return;mount();if(ART.ready)buildCity();else loadArt(()=>{buildCity();focus(true)})}
 on=wantOn();
-return {get on(){return on},ok:!!renderer,setOn,rebuild,update:()=>{if(on)update()},moved:k=>{if(on)moved(k)},focus:i=>{if(on)focus(i)}};
+return {get on(){return on},ok:!!renderer,setOn,rebuild,update:()=>{if(on)update()},moved:k=>{if(on)moved(k)},focus:i=>{if(on)focus(i)},recenter:()=>{if(on)recenter()}};
 
 })();
 
@@ -3026,6 +3051,7 @@ function homeHow(){return `<ul class="how"><li><b>Осматривайтесь.<
   <li><b>Пустые ячейки займут слухи.</b> Слух можно пустить и самому — в баре, клубе, на рынке, вокзале.</li>
   <li><b>Тайно работайте на свою сторону:</b> «Влияние» сдвигает район к Камарилье или к анархам. Видно, чей район, но не кто вложился.</li>
   <li><b>Броски.</b> Простые: 2–3 шестигранника, любая 5–6 — удача. Как в V5: атрибут + навык на десятигранниках, успех — 6+, нужно 2 успеха; кубы Голода опасны.</li>
+  <li><b>Карта:</b> левая кнопка мыши — сдвиг, правая — поворот и наклон, колесо — масштаб, <b>пробел</b> — вернуться к персонажу в исходном ракурсе.</li>
   <li><b>До 06:00 вернитесь в убежище</b> — рассвет на улице почти всегда смертелен.</li></ul>`}
 function homeAbout(){return `<p>Неофициальная фан-игра по Vampire: The Masquerade. Город, кланы и дела Князя собираются заново в каждой партии.</p>${legalBadge()}<p class="hint">${EDITION==="unbound"?"Developed and published under license from Paradox Interactive.":"Неофициальный фан-проект. Не является официальным материалом World of Darkness и не одобрен Paradox Interactive. Распространяется бесплатно."} ${NOTICE}</p><p class="hint">v1.6</p>`}
 function homeHtml(){if(!UI.home)return "";const v=UI.home;const m=hasGame()?me():null;
@@ -3074,7 +3100,7 @@ const wordmark=(k,col)=>NAME_OK[k]?`<span class="su-wm" aria-hidden="true" style
 const CLAN_GROUPS=[["Правители и повелители",["ven","tzi"]],["Бойцы и защитники",["bru","gan"]],["Соблазнители",["tor"]],["Искатели знания",["tre"]],["Скрытые",["nos"]]];
 const DISC_ICON={"Прорицание":"auspex","Стремительность":"celerity","Присутствие":"presence","Доминирование":"dominate","Стойкость":"fortitude","Затемнение":"obfuscate","Анимализм":"animalism","Мощь":"potence","Магия крови":"blood-sorcery","Превращение":"protean"};
 const discHtml=d=>`<i><span class="dic" aria-hidden="true" style="${maskOf("icons/disc/"+DISC_ICON[d]+".png")}"></span>${d}</i>`;
-function setupSteps(n){const sel=(UI.setup.sel||{});const st=["Клан","Тайная сторона","Правила"].concat(sel.dice==="v5"?["Хищник"]:[]);
+function setupSteps(n){const sel=(UI.setup.sel||{});const st=["Клан","Тайная сторона","Правила"].concat(sel.dice==="v5"?["Персонаж"]:[]);
   return `<ol class="steps">${st.map((t,i)=>`<li class="${i===n?"on":i<n?"done":""}">${i<n?`<button onclick="setupBack(${i})">${i+1}. ${t}</button>`:`<span>${i+1}. ${t}</span>`}</li>`).join("")}</ol>`}
 function setupBack(i){const S=UI.setup;if(i<=0){S.clan=null;S.fac=null}if(i<=1){S.fac=null}S.rules=false;render()}
 function setupScreen(){const S=UI.setup;const sel=S.sel||{};
@@ -3091,7 +3117,7 @@ function setupScreen(){const S=UI.setup;const sel=S.sel||{};
      ${card("ana","Анархи","Свобода, улица, своя правда",["Окраины, трущобы и порт — ваша естественная земля","Районы приносят деньги, находки и убежища на рассвете","Если двор узнает, вас разоблачат и лишат защиты"])}</div>
      <p class="su-note">${C.name} ${C.lean>=.5?"обычно тянутся к анархам":"обычно держатся Камарильи"}, но решать вам. Сменить сторону можно и потом, в убежище, — за деньги или Статус.</p>
      <div class="su-bar">${f?`${emb(f,FAC[f].color)}<div class="su-bar-t"><b style="color:${FAC[f].color}">${FAC[f].name}</b><span>Ваш выбор останется тайной.</span></div><button class="primary" onclick="UI.setup.fac='${f}';render()">Дальше</button>`:'<span class="hint">Выберите сторону, чтобы продолжить.</span>'}</div></div>`}
-  const go=`act('start',{clan:UI.setup.clan,fac:UI.setup.fac,death:UI.setup.sel.death,dice:UI.setup.sel.dice,pred:UI.setup.sel.pred||'sand'})`;
+  const go=`act('start',{clan:UI.setup.clan,fac:UI.setup.fac,death:UI.setup.sel.death,dice:UI.setup.sel.dice,pred:UI.setup.sel.pred||'sand',sheet:UI.setup.sel.sh})`;
   if(!S.rules){const d=sel.death,r=sel.dice;
     const card=(key,id,title,tag,lines,col,icon)=>`<button class="su-big su-rule${sel[key]===id?" on":""}" style="--cc:${col}" onclick="UI.setup.sel={...UI.setup.sel,${key}:'${id}'};render()">${icon}<span class="su-name">${title}</span><span class="su-tag">${tag}</span><ul>${lines.map(l=>`<li>${l}</li>`).join("")}</ul></button>`;
     const die=(f,c)=>`<img class="su-die" src="icons/dice/${c}-${f}.png" alt="">`;
@@ -3101,12 +3127,28 @@ function setupScreen(){const S=UI.setup;const sel=S.sel||{};
    <section class="su-group"><h2>Броски</h2><div class="su-two">${card("dice","simple","Просто","2–3 куба, без листа",["Бросаете 2–3 шестигранника, любая 5 или 6 — удача","Статус и Голод добавляют или отнимают куб","Быстро и понятно — для первой партии"],"#9fb3c8",`<span class="su-dice">${die("success","normal")}${die("blank","normal")}</span>`)}
    ${card("dice","v5","Как в V5","Атрибут + навык",["Лист персонажа: атрибуты, навыки и дисциплины клана","Пул десятигранников, успех — 6+, обычно нужно 2 успеха","Пара десяток — критический; кубы Голода могут дать грязный успех или звериный провал","Тип хищника решает, как вы охотитесь"],"#d9a85a",`<span class="su-dice">${die("crit","normal")}${die("success","normal")}${die("skull","hunger")}</span>`)}</div></section>
    <div class="su-bar">${d&&r?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${FAC[S.fac].name} · ${d==="final"?"одна жизнь":"новый неонат"} · ${r==="v5"?"броски V5":"простые броски"}</b><span>${r==="v5"?"Осталось выбрать, как вы охотитесь.":"Двенадцать ночей. Город уже ждёт."}</span></div>${r==="v5"?`<button class="primary" onclick="UI.setup.rules=true;render()">Дальше</button>`:`<button class="primary" onclick="${go}">Выйти в ночь</button>`}`:`<span class="hint">${!d&&!r?"Выберите правило смерти и способ бросков.":!d?"Выберите, что будет после смерти.":"Выберите, как бросать кубы."}</span>`}</div></div>`}
-  const pr=sel.pred;const sh=mkSheet(S.clan,pr||"sand");
-  return `<div class="su-in">${setupSteps(3)}<header class="su-head"><h1>Как вы <em>кормитесь</em></h1><p>Тип хищника решает, каким пулом вы охотитесь и где охота легче. Ниже — лист вашего персонажа: из него собираются пулы во всех бросках.</p></header>
-   <div class="su-grid su-preds">${Object.entries(PREDATORS).map(([id,P])=>`<button class="su-card${pr===id?" on":""}" style="--cc:#d9a85a" onclick="UI.setup.sel={...UI.setup.sel,pred:'${id}'};render()"><span class="su-name">${P.n}</span><span class="su-line">${P.line}</span>
-     <span class="su-tag">Охота: ${poolOf({sheet:mkSheet(S.clan,id),clan:S.clan},P.pool).label}</span><span class="su-pas">+1 к навыку «${SKILL[P.skill]}». ${P.fx}</span></button>`).join("")}</div>
-   ${sheetHtml(sh,S.clan)}
-   <div class="su-bar">${pr?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${PREDATORS[pr].n}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="${go}">Выйти в ночь</button>`:'<span class="hint">Выберите тип хищника, чтобы начать.</span>'}</div></div>`}
+  const pr=sel.pred;const C=suSheet();const ok=sheetValid(C);
+  const aL=quotaLeft(ATTR_NEED,C.a),sL=quotaLeft(SKILL_NEED,C.s);
+  const qTxt=(L,lv)=>lv.map(v=>`<span class="q${L[v]===0?" done":L[v]<0?" over":""}">${v}: <b>${Math.max(0,L[v])}</b></span>`).join("");
+  const row=(kind,k,name,max,L,cur,extra="")=>`<div class="sh-r ed"><span>${name}${extra}</span><span class="dots ed">${Array.from({length:max},(_,i)=>{const v=i+1;const can=v===cur||L[v]>0;return `<button class="${v<=cur?"on":""}" ${can?"":"disabled"} aria-label="${name}: ${v}" onclick="suDot('${kind}','${k}',${v})"></button>`}).join("")}</span></div>`;
+  const ds=DISC[S.clan]||[];
+  return `<div class="su-in">${setupSteps(3)}<header class="su-head"><h1>Ваш <em>персонаж</em></h1><p>Выберите, как вы кормитесь, и распределите точки. Из них собираются пулы во всех бросках: атрибут + навык или дисциплина.</p></header>
+   <section class="su-group"><h2>Тип хищника</h2><div class="su-grid su-preds">${Object.entries(PREDATORS).map(([id,P])=>`<button class="su-card${pr===id?" on":""}" style="--cc:#d9a85a" onclick="UI.setup.sel={...UI.setup.sel,pred:'${id}'};render()"><span class="su-name">${P.n}</span><span class="su-line">${P.line}</span>
+     <span class="su-tag">Охота: ${P.pool.split("+").map(x=>ATTR[x]||SKILL[x]).join(" + ")}</span><span class="su-pas">+1 к навыку «${SKILL[P.skill]}». ${P.fx}</span></button>`).join("")}</div></section>
+   <section class="su-group"><h2>Лист персонажа</h2>
+    <div class="sh-tools"><button class="primary" onclick="suAuto()">Заполнить автоматически</button><button class="ghost" onclick="suReset()">Сбросить</button><span class="hint">Автоматически — типичный лист клана ${CLANS[S.clan].name}. Можно заполнить и поправить.</span></div>
+    <section class="sheet ed">
+     <div class="sh-col"><span class="eyebrow">Атрибуты</span><span class="quota">Осталось: ${qTxt(aL,[4,3,2,1])}</span>${ATTR_GROUPS.map(([g,ks])=>`<div class="sh-g"><span class="sh-gn">${g}</span>${ks.map(k=>row("a",k,ATTR[k],4,aL,C.a[k]||0)).join("")}</div>`).join("")}</div>
+     <div class="sh-col"><span class="eyebrow">Навыки</span><span class="quota">Осталось: ${qTxt(sL,[3,2,1])}</span>${Object.keys(SKILL).map(k=>row("s",k,SKILL[k],3,sL,C.s[k]||0,pr&&PREDATORS[pr].skill===k?' <i class="plus" title="от типа хищника">+1</i>':"")).join("")}</div>
+     <div class="sh-col"><span class="eyebrow">Дисциплины</span><span class="hint">Главная дисциплина получает 2 точки, остальные — по одной.</span>${ds.map(n=>`<button class="sh-disc${C.dp===n?" on":""}" onclick="suDisc('${n}')"><span>${discHtml(n)}</span>${dots(C.dp===n?2:1)}</button>`).join("")}</div>
+    </section></section>
+   <div class="su-bar">${pr&&ok?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${PREDATORS[pr].n}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="${go}">Выйти в ночь</button>`:`<span class="hint">${!pr?"Выберите тип хищника. ":""}${!ok?"Распределите все точки атрибутов и навыков — или нажмите «Заполнить автоматически».":""}</span>`}</div></div>`}
+// ручное заполнение листа: по умолчанию пусто, «Заполнить автоматически» ставит лист клана
+function suSheet(){const S=UI.setup;if(!S.sel.sh||S.sel.sh.clan!==S.clan)S.sel={...S.sel,sh:{clan:S.clan,a:{},s:{},dp:(DISC[S.clan]||[])[0]}};return S.sel.sh}
+function suDot(kind,k,v){const C=suSheet();const cur=C[kind][k]||0;C[kind][k]=cur===v?0:v;render()}
+function suDisc(n){suSheet().dp=n;render()}
+function suAuto(){const S=UI.setup;S.sel={...S.sel,sh:{clan:S.clan,...autoSheet(S.clan)}};render()}
+function suReset(){const S=UI.setup;S.sel={...S.sel,sh:null};render()}
 // лист персонажа: точки атрибутов, навыков и дисциплин
 const dots=(n,max=5)=>`<span class="dots" aria-label="${n} из ${max}">${Array.from({length:max},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`;
 function sheetHtml(sh,clan){return `<section class="sheet"><div class="sh-col"><span class="eyebrow">Атрибуты</span>${ATTR_GROUPS.map(([g,ks])=>`<div class="sh-g"><span class="sh-gn">${g}</span>${ks.map(k=>`<div class="sh-r"><span>${ATTR[k]}</span>${dots(sh.a[k])}</div>`).join("")}</div>`).join("")}</div>
@@ -3235,6 +3277,8 @@ function render(){if(!G)return;M=me();$("#hud").innerHTML=hud();
   {const bar=$("#bar"),h=barHtml();bar.hidden=!h;bar.innerHTML=h;document.body.classList.toggle("has-bar",!!h)}
   $("#zoom").hidden=!M;document.querySelectorAll("#zoom [data-z]").forEach(b=>b.classList.toggle("on",b.dataset.z===UI.zoom));
   drawFog();drawMarks();MAP3D.update();save()}
+// пробел: камера возвращается к персонажу в исходном ракурсе
+function camHome(){if(!G||!me()||!me().clan)return;if(UI.zoom==="far"){UI.zoom="near";render()}if(MAP3D.on)MAP3D.recenter();else focusCam()}
 function closeMenu(){const m=$("#setMenu");if(m){m.hidden=true;$("#setBtn").setAttribute("aria-expanded","false")}}
 
 /* ---------- сохранение ---------- */
@@ -3244,7 +3288,10 @@ function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return false;co
 function boot(){initAudioUI();document.querySelectorAll("#zoom [data-z]").forEach(b=>b.onclick=()=>setZoom(b.dataset.z));
   const vb=document.querySelector("[data-view]");if(vb){vb.hidden=!MAP3D.ok;vb.onclick=()=>{MAP3D.setOn(!MAP3D.on);render()}}
   const sb=$("#setBtn"),sm=$("#setMenu");sb.onclick=e=>{e.stopPropagation();sm.hidden=!sm.hidden;sb.setAttribute("aria-expanded",String(!sm.hidden))};
-  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!sm.hidden)return closeMenu();if(UI.home&&UI.home!=="main")return homeOpen("main");if(UI.home&&hasGame())return homeClose();if(!UI.home)homeOpen()});
+  document.addEventListener("click",e=>{if(!sm.hidden&&!sm.contains(e.target))closeMenu();if(UI.more&&!e.target.closest(".more-w")){UI.more=false;render()}});document.addEventListener("keydown",e=>{if(e.code==="Space"&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const t=e.target;if(t&&t.matches&&t.matches("input,textarea,select,[contenteditable]"))return;
+    if(UI.home||!sm.hidden||G.phase==="setup"||document.body.classList.contains("sc-open")||document.body.classList.contains("ct-open")||!$("#ovl").hidden)return;
+    e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();camHome();return}
+  if(e.key!=="Escape")return;if(!sm.hidden)return closeMenu();if(UI.home&&UI.home!=="main")return homeOpen("main");if(UI.home&&hasGame())return homeClose();if(!UI.home)homeOpen()});
   const top=document.querySelector(".top");const setTop=()=>document.documentElement.style.setProperty("--topH",top.offsetHeight+"px");setTop();if(window.ResizeObserver)new ResizeObserver(setTop).observe(top);addEventListener("resize",setTop);
   MAP3D.setOn(MAP3D.on);if(!load())newCity();homeOpen()}
 boot();

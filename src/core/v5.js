@@ -24,9 +24,15 @@ const PREDATORS={
   sand:{n:"Песочный человек",line:"Пьёте у спящих: окно, тишина, никто не проснётся.",pool:"dex+stealth",skill:"stealth",fav:["res","old","uni"],fx:"Охота в жилых кварталах, старом городе и у университета — +1 куб."},
   bag:{n:"Мешочник",line:"Кровь из пакетов: больница, банк крови, свой человек.",pool:"int+street",skill:"street",fav:["hosp","market"],fx:"Охота у больницы и на рынке — +1 куб."}};
 const DISC_DOTS=[2,1,1];
-function mkSheet(clan,pred){const T=SHEETS[clan]||SHEETS.tor;const a={};Object.keys(ATTR).forEach((k,i)=>a[k]=T.a[i]);
-  const s={...T.s};const P=PREDATORS[pred]||PREDATORS.sand;s[P.skill]=Math.min(4,(s[P.skill]||0)+1);
-  const d={};(DISC[clan]||[]).forEach((n,i)=>d[n]=DISC_DOTS[i]||1);return {a,s,d,pred:pred in PREDATORS?pred:"sand"}}
+// распределение точек при создании: атрибуты 4·3·3·3·2·2·2·2·1, навыки 3·2·2·2·1·1·1·1
+const ATTR_NEED={4:1,3:3,2:4,1:1},SKILL_NEED={3:1,2:3,1:4};
+function quotaLeft(need,vals){const left={...need};for(const v of Object.values(vals))if(v&&left[v]!=null)left[v]--;return left}
+function quotaOk(need,vals,all){const left=quotaLeft(need,vals);return Object.values(left).every(x=>x===0)&&(!all||all.every(k=>vals[k]))}
+function autoSheet(clan){const T=SHEETS[clan]||SHEETS.tor;const a={};Object.keys(ATTR).forEach((k,i)=>a[k]=T.a[i]);return {a,s:{...T.s},dp:(DISC[clan]||[])[0]}}
+function sheetValid(c){return !!(c&&c.a&&c.s&&quotaOk(ATTR_NEED,c.a,Object.keys(ATTR))&&quotaOk(SKILL_NEED,c.s))}
+function mkSheet(clan,pred,custom){const base=sheetValid(custom)?custom:autoSheet(clan);const a={...base.a};
+  const s={};for(const [k,v] of Object.entries(base.s))if(v)s[k]=v;const P=PREDATORS[pred]||PREDATORS.sand;s[P.skill]=Math.min(4,(s[P.skill]||0)+1);
+  const ds=DISC[clan]||[];const dp=ds.includes(base.dp)?base.dp:ds[0];const d={};ds.forEach(n=>d[n]=n===dp?2:1);return {a,s,d,pred:pred in PREDATORS?pred:"sand"}}
 const isV5=()=>!!(G&&G.dice==="v5");
 // пулы для выборов в событиях: «атрибут+навык», «атрибут+D:Дисциплина/запасной навык»
 const POOLS={"Внушить ему, что вы — проверка":"man+D:Доминирование/subt","Пройти мимо них внутрь":"dex+stealth","Порыться в разрешениях на снос":"int+inv",

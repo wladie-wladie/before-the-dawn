@@ -308,3 +308,19 @@ body.hm-open{overflow:hidden}
 .su-preds{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 .tabs.t5{grid-template-columns:repeat(5,1fr)}.tabs.t5 button .ico{display:none}.tabs.t5 button{font-size:.84rem;padding:8px 2px}
 @media (max-width:760px){.sheet{grid-template-columns:1fr 1fr}.sheet .sh-col:last-child{grid-column:1/-1}}
+
+/* ручное заполнение листа */
+.sh-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.quota{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;color:var(--dim);margin-bottom:4px}
+.quota .q b{color:var(--gold2)}.quota .q.done{opacity:.45}.quota .q.done b{color:var(--dim)}.quota .q.over b{color:#e0606b}
+.dots.ed{gap:4px}.dots.ed button{width:16px;height:16px;padding:0;border-radius:50%;border:1px solid #5a5662;background:transparent;cursor:pointer}
+.dots.ed button.on{background:var(--blood);border-color:var(--blood)}
+.dots.ed button:hover:not(:disabled){border-color:var(--gold2)}
+.dots.ed button:disabled{opacity:.25}
+.sh-r.ed{padding:2px 0}
+.plus{font-style:normal;font-size:.72rem;font-weight:700;color:var(--gold2);margin-left:4px}
+.sh-disc{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:8px 10px;font-size:.9rem}
+.sh-disc.on{border-color:var(--gold);background:linear-gradient(90deg,rgba(217,168,90,.14),transparent)}
+.sh-disc .dots i{width:9px;height:9px}
+.sh-disc i{font-style:normal}
+@media (max-width:760px){.sheet.ed{grid-template-columns:1fr}.dots.ed button{width:20px;height:20px}}

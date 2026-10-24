@@ -542,6 +542,9 @@ function tickExtras(T){for(const c of cops){if(!c.visible)continue;const u=c.use
   if(seal&&seal.visible){seal.position.y=3.6+Math.sin(T*1.2)*.15;seal.material.rotation=Math.sin(T*.5)*.15}}
 
 /* --- камера: «к себе», «район», «весь город» --- */
+// пробел, как в «Эпохе Сумерек»: исходный наклон и поворот, камера возвращается к персонажу; масштаб сохраняется
+function recenter(){if(!city||!tok)return;follow=true;const d=clamp(cam.dist,9,30);const th=.55+Math.round((cam.theta-.55)/(2*Math.PI))*2*Math.PI;
+  cam.goal={t:tok.position.clone(),d,phi:1.02,theta:th};need=true}
 function focus(instant){if(!city)return;const m=me();const far=UI.zoom==="far"||!m||!m.clan;follow=!far;
   const t=far?new THREE.Vector3():tok.position.clone();const d=far?Math.max(40,CONFIG.radius*11):UI.zoom==="mid"?22:13;
   cam.goal={t,d,phi:far?.9:1.02};if(instant){cam.target.copy(t);cam.dist=d;cam.phi=cam.goal.phi;cam.goal=null;placeCam()}need=true}
@@ -583,7 +586,7 @@ let t0=performance.now();
 function frame(t){requestAnimationFrame(frame);const dt=Math.min(.1,(t-t0)/1000);t0=t;const T=t/1000;
   if(!on||document.hidden||document.body.classList.contains("sc-open")||!world)return;
   if(window.BTD_TEST){if(t-(frame.R||0)<2500)return;frame.R=t} // в автотестах (программный рендер) рисуем редко
-  if(cam.goal){const g=cam.goal,k=1-Math.pow(.02,dt);cam.target.lerp(g.t,k);cam.dist+=(g.d-cam.dist)*k;cam.phi+=(g.phi-cam.phi)*k;if(cam.target.distanceTo(g.t)<.05&&Math.abs(cam.dist-g.d)<.1)cam.goal=null}
+  if(cam.goal){const g=cam.goal,k=1-Math.pow(.02,dt);cam.target.lerp(g.t,k);cam.dist+=(g.d-cam.dist)*k;cam.phi+=(g.phi-cam.phi)*k;if(g.theta!=null)cam.theta+=(g.theta-cam.theta)*k;if(cam.target.distanceTo(g.t)<.05&&Math.abs(cam.dist-g.d)<.1&&(g.theta==null||Math.abs(g.theta-cam.theta)<.01))cam.goal=null}
   zoomStep();tickToken(dt);if(follow&&tok&&!cam.goal&&!drag&&!zGo){const p=tok.position;cam.target.x+=(p.x-cam.target.x)*Math.min(1,dt*3);cam.target.z+=(p.z-cam.target.z)*Math.min(1,dt*3)}
   placeCam();
   if(LAMPS.length&&(!frame.L||t-frame.L>350)){frame.L=t;const v=new THREE.Vector3();const ls=LAMPS.map(l=>{l.grp.localToWorld(v.set(l.x,l.y,l.z));return {p:v.clone(),c:l.col,d:v.distanceToSquared(cam.target)}}).sort((a,b)=>a.d-b.d).slice(0,PL.length);
@@ -615,6 +618,6 @@ function setOn(v){on=!!v&&!!renderer;try{localStorage.setItem(VIEW_KEY,on?"3d":"
   document.querySelectorAll("[data-view] .ib-t").forEach(b=>b.textContent=on?"2D":"3D")}
 function rebuild(){attach();if(!on)return;mount();if(ART.ready)buildCity();else loadArt(()=>{buildCity();focus(true)})}
 on=wantOn();
-return {get on(){return on},ok:!!renderer,setOn,rebuild,update:()=>{if(on)update()},moved:k=>{if(on)moved(k)},focus:i=>{if(on)focus(i)}};
+return {get on(){return on},ok:!!renderer,setOn,rebuild,update:()=>{if(on)update()},moved:k=>{if(on)moved(k)},focus:i=>{if(on)focus(i)},recenter:()=>{if(on)recenter()}};
 
 })();

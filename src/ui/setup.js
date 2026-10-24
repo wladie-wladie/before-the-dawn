@@ -27,7 +27,7 @@ const wordmark=(k,col)=>NAME_OK[k]?`<span class="su-wm" aria-hidden="true" style
 const CLAN_GROUPS=[["Правители и повелители",["ven","tzi"]],["Бойцы и защитники",["bru","gan"]],["Соблазнители",["tor"]],["Искатели знания",["tre"]],["Скрытые",["nos"]]];
 const DISC_ICON={"Прорицание":"auspex","Стремительность":"celerity","Присутствие":"presence","Доминирование":"dominate","Стойкость":"fortitude","Затемнение":"obfuscate","Анимализм":"animalism","Мощь":"potence","Магия крови":"blood-sorcery","Превращение":"protean"};
 const discHtml=d=>`<i><span class="dic" aria-hidden="true" style="${maskOf("icons/disc/"+DISC_ICON[d]+".png")}"></span>${d}</i>`;
-function setupSteps(n){const sel=(UI.setup.sel||{});const st=["Клан","Тайная сторона","Правила"].concat(sel.dice==="v5"?["Хищник"]:[]);
+function setupSteps(n){const sel=(UI.setup.sel||{});const st=["Клан","Тайная сторона","Правила"].concat(sel.dice==="v5"?["Персонаж"]:[]);
   return `<ol class="steps">${st.map((t,i)=>`<li class="${i===n?"on":i<n?"done":""}">${i<n?`<button onclick="setupBack(${i})">${i+1}. ${t}</button>`:`<span>${i+1}. ${t}</span>`}</li>`).join("")}</ol>`}
 function setupBack(i){const S=UI.setup;if(i<=0){S.clan=null;S.fac=null}if(i<=1){S.fac=null}S.rules=false;render()}
 function setupScreen(){const S=UI.setup;const sel=S.sel||{};
@@ -44,7 +44,7 @@ function setupScreen(){const S=UI.setup;const sel=S.sel||{};
      ${card("ana","Анархи","Свобода, улица, своя правда",["Окраины, трущобы и порт — ваша естественная земля","Районы приносят деньги, находки и убежища на рассвете","Если двор узнает, вас разоблачат и лишат защиты"])}</div>
      <p class="su-note">${C.name} ${C.lean>=.5?"обычно тянутся к анархам":"обычно держатся Камарильи"}, но решать вам. Сменить сторону можно и потом, в убежище, — за деньги или Статус.</p>
      <div class="su-bar">${f?`${emb(f,FAC[f].color)}<div class="su-bar-t"><b style="color:${FAC[f].color}">${FAC[f].name}</b><span>Ваш выбор останется тайной.</span></div><button class="primary" onclick="UI.setup.fac='${f}';render()">Дальше</button>`:'<span class="hint">Выберите сторону, чтобы продолжить.</span>'}</div></div>`}
-  const go=`act('start',{clan:UI.setup.clan,fac:UI.setup.fac,death:UI.setup.sel.death,dice:UI.setup.sel.dice,pred:UI.setup.sel.pred||'sand'})`;
+  const go=`act('start',{clan:UI.setup.clan,fac:UI.setup.fac,death:UI.setup.sel.death,dice:UI.setup.sel.dice,pred:UI.setup.sel.pred||'sand',sheet:UI.setup.sel.sh})`;
   if(!S.rules){const d=sel.death,r=sel.dice;
     const card=(key,id,title,tag,lines,col,icon)=>`<button class="su-big su-rule${sel[key]===id?" on":""}" style="--cc:${col}" onclick="UI.setup.sel={...UI.setup.sel,${key}:'${id}'};render()">${icon}<span class="su-name">${title}</span><span class="su-tag">${tag}</span><ul>${lines.map(l=>`<li>${l}</li>`).join("")}</ul></button>`;
     const die=(f,c)=>`<img class="su-die" src="icons/dice/${c}-${f}.png" alt="">`;
@@ -54,12 +54,28 @@ function setupScreen(){const S=UI.setup;const sel=S.sel||{};
    <section class="su-group"><h2>Броски</h2><div class="su-two">${card("dice","simple","Просто","2–3 куба, без листа",["Бросаете 2–3 шестигранника, любая 5 или 6 — удача","Статус и Голод добавляют или отнимают куб","Быстро и понятно — для первой партии"],"#9fb3c8",`<span class="su-dice">${die("success","normal")}${die("blank","normal")}</span>`)}
    ${card("dice","v5","Как в V5","Атрибут + навык",["Лист персонажа: атрибуты, навыки и дисциплины клана","Пул десятигранников, успех — 6+, обычно нужно 2 успеха","Пара десяток — критический; кубы Голода могут дать грязный успех или звериный провал","Тип хищника решает, как вы охотитесь"],"#d9a85a",`<span class="su-dice">${die("crit","normal")}${die("success","normal")}${die("skull","hunger")}</span>`)}</div></section>
    <div class="su-bar">${d&&r?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${FAC[S.fac].name} · ${d==="final"?"одна жизнь":"новый неонат"} · ${r==="v5"?"броски V5":"простые броски"}</b><span>${r==="v5"?"Осталось выбрать, как вы охотитесь.":"Двенадцать ночей. Город уже ждёт."}</span></div>${r==="v5"?`<button class="primary" onclick="UI.setup.rules=true;render()">Дальше</button>`:`<button class="primary" onclick="${go}">Выйти в ночь</button>`}`:`<span class="hint">${!d&&!r?"Выберите правило смерти и способ бросков.":!d?"Выберите, что будет после смерти.":"Выберите, как бросать кубы."}</span>`}</div></div>`}
-  const pr=sel.pred;const sh=mkSheet(S.clan,pr||"sand");
-  return `<div class="su-in">${setupSteps(3)}<header class="su-head"><h1>Как вы <em>кормитесь</em></h1><p>Тип хищника решает, каким пулом вы охотитесь и где охота легче. Ниже — лист вашего персонажа: из него собираются пулы во всех бросках.</p></header>
-   <div class="su-grid su-preds">${Object.entries(PREDATORS).map(([id,P])=>`<button class="su-card${pr===id?" on":""}" style="--cc:#d9a85a" onclick="UI.setup.sel={...UI.setup.sel,pred:'${id}'};render()"><span class="su-name">${P.n}</span><span class="su-line">${P.line}</span>
-     <span class="su-tag">Охота: ${poolOf({sheet:mkSheet(S.clan,id),clan:S.clan},P.pool).label}</span><span class="su-pas">+1 к навыку «${SKILL[P.skill]}». ${P.fx}</span></button>`).join("")}</div>
-   ${sheetHtml(sh,S.clan)}
-   <div class="su-bar">${pr?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${PREDATORS[pr].n}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="${go}">Выйти в ночь</button>`:'<span class="hint">Выберите тип хищника, чтобы начать.</span>'}</div></div>`}
+  const pr=sel.pred;const C=suSheet();const ok=sheetValid(C);
+  const aL=quotaLeft(ATTR_NEED,C.a),sL=quotaLeft(SKILL_NEED,C.s);
+  const qTxt=(L,lv)=>lv.map(v=>`<span class="q${L[v]===0?" done":L[v]<0?" over":""}">${v}: <b>${Math.max(0,L[v])}</b></span>`).join("");
+  const row=(kind,k,name,max,L,cur,extra="")=>`<div class="sh-r ed"><span>${name}${extra}</span><span class="dots ed">${Array.from({length:max},(_,i)=>{const v=i+1;const can=v===cur||L[v]>0;return `<button class="${v<=cur?"on":""}" ${can?"":"disabled"} aria-label="${name}: ${v}" onclick="suDot('${kind}','${k}',${v})"></button>`}).join("")}</span></div>`;
+  const ds=DISC[S.clan]||[];
+  return `<div class="su-in">${setupSteps(3)}<header class="su-head"><h1>Ваш <em>персонаж</em></h1><p>Выберите, как вы кормитесь, и распределите точки. Из них собираются пулы во всех бросках: атрибут + навык или дисциплина.</p></header>
+   <section class="su-group"><h2>Тип хищника</h2><div class="su-grid su-preds">${Object.entries(PREDATORS).map(([id,P])=>`<button class="su-card${pr===id?" on":""}" style="--cc:#d9a85a" onclick="UI.setup.sel={...UI.setup.sel,pred:'${id}'};render()"><span class="su-name">${P.n}</span><span class="su-line">${P.line}</span>
+     <span class="su-tag">Охота: ${P.pool.split("+").map(x=>ATTR[x]||SKILL[x]).join(" + ")}</span><span class="su-pas">+1 к навыку «${SKILL[P.skill]}». ${P.fx}</span></button>`).join("")}</div></section>
+   <section class="su-group"><h2>Лист персонажа</h2>
+    <div class="sh-tools"><button class="primary" onclick="suAuto()">Заполнить автоматически</button><button class="ghost" onclick="suReset()">Сбросить</button><span class="hint">Автоматически — типичный лист клана ${CLANS[S.clan].name}. Можно заполнить и поправить.</span></div>
+    <section class="sheet ed">
+     <div class="sh-col"><span class="eyebrow">Атрибуты</span><span class="quota">Осталось: ${qTxt(aL,[4,3,2,1])}</span>${ATTR_GROUPS.map(([g,ks])=>`<div class="sh-g"><span class="sh-gn">${g}</span>${ks.map(k=>row("a",k,ATTR[k],4,aL,C.a[k]||0)).join("")}</div>`).join("")}</div>
+     <div class="sh-col"><span class="eyebrow">Навыки</span><span class="quota">Осталось: ${qTxt(sL,[3,2,1])}</span>${Object.keys(SKILL).map(k=>row("s",k,SKILL[k],3,sL,C.s[k]||0,pr&&PREDATORS[pr].skill===k?' <i class="plus" title="от типа хищника">+1</i>':"")).join("")}</div>
+     <div class="sh-col"><span class="eyebrow">Дисциплины</span><span class="hint">Главная дисциплина получает 2 точки, остальные — по одной.</span>${ds.map(n=>`<button class="sh-disc${C.dp===n?" on":""}" onclick="suDisc('${n}')"><span>${discHtml(n)}</span>${dots(C.dp===n?2:1)}</button>`).join("")}</div>
+    </section></section>
+   <div class="su-bar">${pr&&ok?`<div class="su-bar-t"><b>${CLANS[S.clan].name} · ${PREDATORS[pr].n}</b><span>Двенадцать ночей. Город уже ждёт.</span></div><button class="primary" onclick="${go}">Выйти в ночь</button>`:`<span class="hint">${!pr?"Выберите тип хищника. ":""}${!ok?"Распределите все точки атрибутов и навыков — или нажмите «Заполнить автоматически».":""}</span>`}</div></div>`}
+// ручное заполнение листа: по умолчанию пусто, «Заполнить автоматически» ставит лист клана
+function suSheet(){const S=UI.setup;if(!S.sel.sh||S.sel.sh.clan!==S.clan)S.sel={...S.sel,sh:{clan:S.clan,a:{},s:{},dp:(DISC[S.clan]||[])[0]}};return S.sel.sh}
+function suDot(kind,k,v){const C=suSheet();const cur=C[kind][k]||0;C[kind][k]=cur===v?0:v;render()}
+function suDisc(n){suSheet().dp=n;render()}
+function suAuto(){const S=UI.setup;S.sel={...S.sel,sh:{clan:S.clan,...autoSheet(S.clan)}};render()}
+function suReset(){const S=UI.setup;S.sel={...S.sel,sh:null};render()}
 // лист персонажа: точки атрибутов, навыков и дисциплин
 const dots=(n,max=5)=>`<span class="dots" aria-label="${n} из ${max}">${Array.from({length:max},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`;
 function sheetHtml(sh,clan){return `<section class="sheet"><div class="sh-col"><span class="eyebrow">Атрибуты</span>${ATTR_GROUPS.map(([g,ks])=>`<div class="sh-g"><span class="sh-gn">${g}</span>${ks.map(k=>`<div class="sh-r"><span>${ATTR[k]}</span>${dots(sh.a[k])}</div>`).join("")}</div>`).join("")}</div>
